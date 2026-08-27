@@ -1,0 +1,17 @@
+{
+  "name": "parity",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Temporary harness diffing @animo-id/dif-pex against the deprecated @animo-id/pex. Delete once the migration lands.",
+  "scripts": {
+    "types:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@animo-id/pex": "^6.1.1",
+    "@sd-jwt/core": "^0.9.2",
+    "@sd-jwt/decode": "^0.9.2",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

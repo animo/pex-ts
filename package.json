@@ -1,0 +1,24 @@
+{
+  "name": "dif-pex-root",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.16.0"
+  },
+  "packageManager": "pnpm@9.12.1+sha512.e5a7e52a4183a02d5931057f7a0dbff9d5e9ce3161e33fa68ae392125b79282a8a8a470a51dfc8a0ed86221442eb2fb57019b0990ed24fab519bf0e1bc5ccfc4",
+  "scripts": {
+    "build": "pnpm -r build",
+    "types:check": "pnpm -r types:check",
+    "style": "biome check --unsafe",
+    "style:fix": "pnpm style --write",
+    "test": "vitest",
+    "release": "pnpm build && pnpm changeset publish",
+    "changeset-version": "pnpm changeset version && pnpm style:fix && git add . && git commit --amend --no-edit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.8",
+    "@changesets/cli": "^2.29.8",
+    "vitest": "^4.0.14"
+  }
+}
