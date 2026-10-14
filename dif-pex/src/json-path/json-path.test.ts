@@ -154,7 +154,13 @@ describe('queryJsonPath', () => {
     let deep: Record<string, unknown> = { target: 'found' }
     for (let i = 0; i < 50_000; i++) deep = { nested: deep }
 
-    expect(queryJsonPathString(deep, '$..target')).toEqual([{ value: 'found', path: expect.any(Array) }])
+    const result = queryJsonPathString(deep, '$..target')
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.value).toBe('found')
+    expect(result[0]?.path).toHaveLength(50_001)
+    expect(result[0]?.path.at(-1)).toBe('target')
+    expect(result[0]?.path.slice(0, -1).every((component) => component === 'nested')).toBe(true)
   })
 
   it('reuses parsed segments across values', () => {
