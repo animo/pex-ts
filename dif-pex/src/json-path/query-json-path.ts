@@ -9,18 +9,52 @@ function hasOwn(object: Record<string, unknown>, key: string): boolean {
   return Object.hasOwn(object, key)
 }
 
+interface PathLink {
+  parent: PathLink | undefined
+  component: PathComponent
+  depth: number
+}
+
+interface TraversalNode {
+  value: unknown
+  path: PathLink | undefined
+}
+
+function appendPath(path: PathLink | undefined, component: PathComponent): PathLink {
+  return { parent: path, component, depth: (path?.depth ?? 0) + 1 }
+}
+
+function pathFromComponents(components: PathComponent[]): PathLink | undefined {
+  let path: PathLink | undefined
+  for (const component of components) path = appendPath(path, component)
+  return path
+}
+
+function materializePath(path: PathLink): PathComponent[] {
+  const components = new Array<PathComponent>(path.depth)
+  let current: PathLink | undefined = path
+
+  while (current !== undefined) {
+    components[current.depth - 1] = current.component
+    current = current.parent
+  }
+
+  return components
+}
+
 /**
  * Collect every occurrence of `key` in the subtree rooted at `node`, including `node` itself.
  *
  * Iterative rather than recursive so that deeply nested credentials cannot blow the stack, and
  * cycle-guarded so that a caller handing us a non-JSON object graph cannot hang the process.
  * Traversal is pre-order and deterministic: a node is inspected before its children, and
- * children are visited in property/index order.
+ * children are visited in property/index order. Paths are linked during traversal so visiting a
+ * deeply nested node does not copy every path prefix; complete arrays are built only for matches.
  */
 function collectDescendants(node: JsonPathNode, key: string): JsonPathNode[] {
   const results: JsonPathNode[] = []
   const seen = new WeakSet<object>()
-  const stack: JsonPathNode[] = [node]
+  const stack: TraversalNode[] = [{ value: node.value, path: pathFromComponents(node.path) }]
 
   while (stack.length > 0) {
     const current = stack.pop()
@@ -33,7 +67,8 @@ function collectDescendants(node: JsonPathNode, key: string): JsonPathNode[] {
 
     if (isPlainObject(value)) {
       if (hasOwn(value, key)) {
-        results.push({ value: value[key], path: [...path, key] })
+        const matchPath = appendPath(path, key)
+        results.push({ value: value[key], path: materializePath(matchPath) })
       }
 
       // Pushed in reverse so the stack pops them in declaration order.
@@ -41,14 +76,14 @@ function collectDescendants(node: JsonPathNode, key: string): JsonPathNode[] {
       for (let index = entries.length - 1; index >= 0; index--) {
         const property = entries[index]
         if (property === undefined) continue
-        stack.push({ value: value[property], path: [...path, property] })
+        stack.push({ value: value[property], path: appendPath(path, property) })
       }
       continue
     }
 
     if (!Array.isArray(value)) continue
     for (let index = value.length - 1; index >= 0; index--) {
-      stack.push({ value: value[index], path: [...path, index] })
+      stack.push({ value: value[index], path: appendPath(path, index) })
     }
   }
 
