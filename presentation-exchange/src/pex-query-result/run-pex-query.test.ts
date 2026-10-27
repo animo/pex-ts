@@ -107,8 +107,7 @@ describe('input descriptor evaluation', () => {
     expect(match?.nodes).toEqual([{ path: ['given_name'], value: 'Erika' }])
   })
 
-  it('does not fall through to a later path when the winning path fails its filter', () => {
-    // `$.given_name` resolves, so `$.family_name` is never consulted even though it would pass.
+  it('tries the next path when a path resolves to a value failing the filter', () => {
     const result = query(
       {
         id: 'd',
@@ -116,6 +115,54 @@ describe('input descriptor evaluation', () => {
           {
             id: 'x',
             constraints: { fields: [{ path: ['$.given_name', '$.family_name'], filter: { const: 'Mustermann' } }] },
+          },
+        ],
+      },
+      [sdJwtCredential]
+    )
+
+    expect(result.can_be_satisfied).toBe(true)
+    const match = result.input_descriptors[0]?.matching_credentials[0]?.fields[0]
+    expect(match?.matched_path).toBe('$.family_name')
+    expect(match?.nodes).toEqual([{ path: ['family_name'], value: 'Mustermann' }])
+  })
+
+  it('reports the first path that failed the filter when no path matches', () => {
+    const result = query(
+      {
+        id: 'd',
+        input_descriptors: [
+          {
+            id: 'x',
+            constraints: {
+              fields: [{ path: ['$.missing', '$.given_name', '$.family_name'], filter: { const: 'Musterfrau' } }],
+            },
+          },
+        ],
+      },
+      [sdJwtCredential]
+    )
+
+    expect(result.can_be_satisfied).toBe(false)
+    expect(result.input_descriptors[0]?.non_matching_credentials[0]?.reasons).toEqual([
+      expect.objectContaining({
+        type: 'field',
+        cause: 'filter_failed',
+        message: expect.stringContaining("'$.given_name'"),
+      }),
+    ])
+  })
+
+  it('fails an optional field whose path resolves to a value failing the filter', () => {
+    const result = query(
+      {
+        id: 'd',
+        input_descriptors: [
+          {
+            id: 'x',
+            constraints: {
+              fields: [{ path: ['$.missing', '$.given_name'], optional: true, filter: { const: 'Max' } }],
+            },
           },
         ],
       },

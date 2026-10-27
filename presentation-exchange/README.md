@@ -182,7 +182,10 @@ submission requirements select those groups.
 }
 ```
 
-Each entry of `fields` reports the path that resolved and every node it matched:
+A field's paths are tried in order, and the first one with a value that satisfies the filter wins. A
+path that resolves nothing, or only values that fail the filter, passes on to the next path.
+
+Each entry of `fields` reports the path that matched and every node it matched:
 `{ field_index, matched_path, nodes: Array<{ path, value }> }`. `value` is `true` for a field with a
 `predicate`.
 
@@ -319,8 +322,8 @@ A presentation differs from a credential in a few ways, which this accounts for:
   `$[n]`. A path like `$[1].verifiableCredential[0]` selects credential 0 of presentation 1.
 - An array index in a field path matches any element: the elements the holder withheld are gone,
   so the second element of the credential can be the first of the presentation. When every element
-  fails the filter, the path counts as not resolved, as the element it names may have been withheld:
-  an optional field passes, and a field with more paths tries the next one.
+  fails the filter, the path counts as not resolved, as the element it names may have been withheld,
+  so an optional field passes.
 - A `format` restriction on algorithms, proof types or cryptosuites fails when the credential
   declares none, instead of being skipped.
 - A `pick` requirement needs exactly `count` of its members, or between `min` and `max`. For a query

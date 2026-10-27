@@ -41,10 +41,11 @@ export interface RunFieldQueryOptions {
 /**
  * Evaluate one field against a credential's claims.
  *
- * Paths are tried in order and the **first one that resolves to at least one node wins** — the
- * remaining paths are not consulted, even if the winning path's value fails the filter. This is
- * how a definition expresses one claim across credential shapes, e.g.
- * `["$.issuer", "$.vc.issuer", "$.iss"]`.
+ * Paths are tried in order and the **first one with a node that satisfies the filter wins**. A path
+ * that resolves nothing, or only to values failing the filter, passes on to the next path, as DIF
+ * Presentation Exchange v2 prescribes. This is how a definition expresses one claim across
+ * credential shapes, e.g. `["$.issuer", "$.vc.issuer", "$.iss"]`. When no path matches, the first
+ * path whose values failed the filter is reported.
  *
  * In a presentation, a path with an array index resolves only when an element passes the filter: the
  * index matches any element there, and the one it names may have been withheld.
@@ -87,6 +88,8 @@ export function runFieldQuery(
     },
   })
 
+  // The first path whose values all failed the filter
+  let failed: { path: string; failures: FilterIssue[] } | undefined
   // The first path in a presentation whose index matched only elements failing the filter
   let unmatchedIndex: { path: string; failures: FilterIssue[] } | undefined
 
@@ -108,16 +111,16 @@ export function runFieldQuery(
     if (matching.length > 0) return { success: true, match: toMatch(path, matching) }
 
     // In a presentation an index matches any element, so the elements that failed may all be other ones than
-    // the path names, which the holder may have withheld. Like a path that resolves nothing, the field then
-    // tries its next path, or passes when optional.
+    // the path names, which the holder may have withheld. The path then counts as not resolved, so an optional
+    // field passes if no other path fails the filter.
     if (options.presentation && segments.some((segment) => typeof segment === 'number')) {
       unmatchedIndex ??= { path, failures }
-      continue
+    } else {
+      failed ??= { path, failures }
     }
-
-    return filterFailed(path, failures)
   }
 
+  if (failed) return filterFailed(failed.path, failed.failures)
   if (isOptional) return { success: true, match: toMatch(compiled.paths[0]?.path ?? '', []) }
   if (unmatchedIndex) return filterFailed(unmatchedIndex.path, unmatchedIndex.failures)
 
