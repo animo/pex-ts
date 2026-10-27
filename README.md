@@ -5,7 +5,7 @@ lines of [dcql-ts][dcql-ts]: pure functions, structured results, and no credenti
 
 | Package | |
 | --- | --- |
-| [`dif-pex/`](./dif-pex) | **`@animo-id/dif-pex`** — the library. [Usage docs](./dif-pex/README.md). |
+| [`pex/`](./pex) | **`@owf/pex`** — the library. [Usage docs](./pex/README.md). |
 | [`parity/`](./parity) | Temporary harness diffing against the deprecated `@animo-id/pex`. [Findings](./parity/PARITY.md). Delete after migration. |
 
 It replaces `@animo-id/pex`, which decodes credentials itself and therefore depends on SD-JWT,
@@ -26,7 +26,7 @@ pnpm style         # biome
 pnpm style:fix
 ```
 
-The examples in `dif-pex/README.md` are executed by `dif-pex/src/readme.test.ts`, so the
+The examples in `pex/README.md` are executed by `pex/src/readme.test.ts`, so the
 documentation cannot drift from the API. Update both together.
 
 ## License
