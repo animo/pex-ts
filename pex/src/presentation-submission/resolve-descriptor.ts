@@ -1,7 +1,20 @@
 import type { JsonPathSegment } from '../json-path/m-json-path.js'
 import { parseJsonPath } from '../json-path/parse-json-path.js'
+import type { PexCredential } from '../pex-credential/u-pex-credential.js'
 import { shorten } from '../u-pex.js'
 import type { Descriptor } from './m-presentation-submission.js'
+
+/**
+ * A presentation, as far as this library needs to understand one: the credentials it carries, in
+ * the order a `descriptor_map` path would address them. For an mdoc device response, its documents.
+ *
+ * Verifying the presentation itself — signatures, holder binding, key binding JWTs, device
+ * signatures — is the caller's job. This library only checks that what was presented answers
+ * what was asked.
+ */
+export interface PexPresentation {
+  credentials: PexCredential[]
+}
 
 export interface DescriptorLocation {
   presentation_index: number
@@ -133,4 +146,72 @@ export function resolveDescriptorLocation(
   }
 
   return { success: true, location: { presentation_index: presentationIndex, credential_index: credentialIndex } }
+}
+
+/**
+ * The credential within a presentation a resolved location points at. A location that addresses the
+ * presentation as a whole selects its only credential, or for an mdoc device response the document whose
+ * doctype is the input descriptor's id, as ISO 18013-7 specifies.
+ */
+function selectCredential(
+  descriptor: Descriptor,
+  presentation: PexPresentation,
+  credentialIndex: number | undefined
+): { success: true; credentialIndex: number } | { success: false; message: string } {
+  if (credentialIndex !== undefined) {
+    if (presentation.credentials[credentialIndex]) return { success: true, credentialIndex }
+    return { success: false, message: `Points at credential ${credentialIndex}, which was not presented` }
+  }
+
+  if (presentation.credentials.length === 1) return { success: true, credentialIndex: 0 }
+
+  const documentIndexes = presentation.credentials
+    .map((credential, index) =>
+      credential.credential_format === 'mso_mdoc' && credential.doctype === descriptor.id ? index : undefined
+    )
+    .filter((index) => index !== undefined)
+  const [documentIndex, ...otherDocumentIndexes] = documentIndexes
+  if (documentIndex !== undefined && otherDocumentIndexes.length === 0) {
+    return { success: true, credentialIndex: documentIndex }
+  }
+
+  return {
+    success: false,
+    message:
+      presentation.credentials.length === 0
+        ? 'Points at a presentation without credentials'
+        : `Points at a presentation of ${presentation.credentials.length} credentials without selecting one, and ${documentIndexes.length} mdoc documents have doctype '${shorten(descriptor.id)}'`,
+  }
+}
+
+/**
+ * The credential a `descriptor_map` entry points at, among the presentations a verifier received.
+ *
+ * This is the credential `runPresentationSubmission` evaluates for the entry. Use it to get the presented
+ * credential of a descriptor, for example to read its claims after verification, so that it is the one
+ * that was checked.
+ */
+export function resolveDescriptorCredential(
+  descriptor: Descriptor,
+  presentations: PexPresentation[]
+):
+  | { success: true; location: { presentation_index: number; credential_index: number }; credential: PexCredential }
+  | { success: false; message: string } {
+  const resolved = resolveDescriptorLocation(descriptor, { presentationCount: presentations.length })
+  if (!resolved.success) return resolved
+
+  const { presentation_index: presentationIndex } = resolved.location
+  const presentation = presentations[presentationIndex]
+  if (presentation === undefined) {
+    return { success: false, message: `Points at presentation ${presentationIndex}, which was not presented` }
+  }
+
+  const selected = selectCredential(descriptor, presentation, resolved.location.credential_index)
+  if (!selected.success) return selected
+
+  return {
+    success: true,
+    location: { presentation_index: presentationIndex, credential_index: selected.credentialIndex },
+    credential: presentation.credentials[selected.credentialIndex] as PexCredential,
+  }
 }

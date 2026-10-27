@@ -5,8 +5,8 @@ import { isSupportedJsonPath, parseJsonPath } from '../json-path/parse-json-path
 import type { PexCredential } from '../pex-credential/u-pex-credential.js'
 import { parsePresentationDefinition } from '../presentation-definition/m-presentation-definition.js'
 import type { Descriptor, PresentationSubmission } from './m-presentation-submission.js'
-import { resolveDescriptorLocation } from './resolve-descriptor.js'
-import { type PexPresentation, runPresentationSubmission } from './run-presentation-submission.js'
+import { type PexPresentation, resolveDescriptorCredential, resolveDescriptorLocation } from './resolve-descriptor.js'
+import { runPresentationSubmission } from './run-presentation-submission.js'
 
 const index = fc.nat({ max: 3 })
 
@@ -112,6 +112,24 @@ describe('runPresentationSubmission fuzz', () => {
             expect(descriptor.input_descriptor_id).toBe(entry.id)
             expect(presentations[descriptor.presentation_index]?.credentials[descriptor.credential_index]).toBeDefined()
             expect(descriptor.presentation_index).toBe(selectedPresentation(entry.path) ?? 0)
+          }
+
+          // resolveDescriptorCredential points at the credential that was evaluated, for every declared entry
+          const declared = new Set(parsed.definition.input_descriptors.map(({ id }) => id))
+          for (const [descriptorIndex, entry] of descriptorMap.entries()) {
+            if (!declared.has(entry.id)) continue
+            const resolved = resolveDescriptorCredential(entry, presentations)
+            const evaluated = result.descriptors.find((descriptor) => descriptor.descriptor_index === descriptorIndex)
+
+            expect(resolved.success).toBe(evaluated !== undefined)
+            if (!resolved.success || !evaluated) continue
+            expect(resolved.location).toEqual({
+              presentation_index: evaluated.presentation_index,
+              credential_index: evaluated.credential_index,
+            })
+            expect(resolved.credential).toBe(
+              presentations[evaluated.presentation_index]?.credentials[evaluated.credential_index]
+            )
           }
 
           if (!result.valid) return

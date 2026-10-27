@@ -15,11 +15,10 @@ export {
   zDescriptor,
   zPresentationSubmission,
 } from './m-presentation-submission.js'
-export type { DescriptorLocation, ResolveDescriptorLocationOptions } from './resolve-descriptor.js'
-export { resolveDescriptorLocation } from './resolve-descriptor.js'
+export type { DescriptorLocation, PexPresentation, ResolveDescriptorLocationOptions } from './resolve-descriptor.js'
+export { resolveDescriptorCredential, resolveDescriptorLocation } from './resolve-descriptor.js'
 export type {
   DescriptorResult,
-  PexPresentation,
   PexPresentationSubmissionResult,
   RunPresentationSubmissionOptions,
 } from './run-presentation-submission.js'

@@ -292,6 +292,18 @@ input descriptor it claims to satisfy, with the same checks as a query, and the 
 `format` is not treated as evidence. Verifying the presentations themselves (signatures, holder
 binding, key binding JWTs, device signatures) remains yours.
 
+To read the presented credential of a descriptor after verification, resolve it the same way:
+
+```ts
+import { resolveDescriptorCredential } from '@owf/pex'
+
+const resolved = resolveDescriptorCredential(submission.descriptor_map[0], presentations)
+if (resolved.success) {
+  resolved.location   // { presentation_index, credential_index }
+  resolved.credential // the credential runPresentationSubmission evaluated for this entry
+}
+```
+
 A presentation differs from a credential in a few ways, which this accounts for:
 
 - A path like `$` that addresses a presentation as a whole selects its only credential, or for an
