@@ -4,8 +4,8 @@ import { PexInvalidSubmissionError } from '../pex-error/e-pex.js'
 import { parsePresentationDefinition } from '../presentation-definition/m-presentation-definition.js'
 import { createPresentationSubmission } from './create-presentation-submission.js'
 import { zPresentationSubmission } from './m-presentation-submission.js'
-import { resolveDescriptorLocation } from './resolve-descriptor.js'
-import { type PexPresentation, runPresentationSubmission } from './run-presentation-submission.js'
+import { type PexPresentation, resolveDescriptorCredential, resolveDescriptorLocation } from './resolve-descriptor.js'
+import { runPresentationSubmission } from './run-presentation-submission.js'
 
 const parsed = parsePresentationDefinition({
   id: 'definition-1',
@@ -225,6 +225,49 @@ describe('resolveDescriptorLocation', () => {
   })
 })
 
+describe('resolveDescriptorCredential', () => {
+  const mdl: PexCredential = { credential_format: 'mso_mdoc', doctype: 'org.iso.18013.5.1.mDL', namespaces: {} }
+  const pid: PexCredential = { credential_format: 'mso_mdoc', doctype: 'eu.europa.ec.eudi.pid.1', namespaces: {} }
+
+  it.each([
+    ['an SD-JWT VC presented as itself', { id: 'a', format: 'dc+sd-jwt', path: '$[1]' }, 1, 0, sdJwt],
+    [
+      'a credential nested in a W3C presentation',
+      {
+        id: 'a',
+        format: 'ldp_vp',
+        path: '$[0]',
+        path_nested: { id: 'a', format: 'ldp_vc', path: '$.verifiableCredential[1]' },
+      },
+      0,
+      1,
+      ldpVc,
+    ],
+    ['an mdoc document by doctype', { id: 'org.iso.18013.5.1.mDL', format: 'mso_mdoc', path: '$[2]' }, 2, 1, mdl],
+  ])('resolves %s', (_, descriptor, presentationIndex, credentialIndex, credential) => {
+    const presentations = [{ credentials: [sdJwt, ldpVc] }, { credentials: [sdJwt] }, { credentials: [pid, mdl] }]
+
+    expect(resolveDescriptorCredential(descriptor, presentations)).toEqual({
+      success: true,
+      location: { presentation_index: presentationIndex, credential_index: credentialIndex },
+      credential,
+    })
+  })
+
+  it.each([
+    [{ id: 'a', format: 'dc+sd-jwt', path: '$' }, "does not select one of the 2 presentations with '$[n]'"],
+    [{ id: 'a', format: 'dc+sd-jwt', path: '$[2]' }, 'Points at presentation 2, which was not presented'],
+    [
+      { id: 'a', format: 'ldp_vc', path: '$[0].verifiableCredential[2]' },
+      'Points at credential 2, which was not presented',
+    ],
+    [{ id: 'a', format: 'ldp_vp', path: '$[0]' }, 'Points at a presentation of 2 credentials without selecting one'],
+  ])('rejects %o', (descriptor, message) => {
+    const result = resolveDescriptorCredential(descriptor, [{ credentials: [sdJwt, ldpVc] }, { credentials: [sdJwt] }])
+    expect(result).toMatchObject({ success: false, message: expect.stringContaining(message) })
+  })
+})
+
 describe('runPresentationSubmission', () => {
   const submission = createPresentationSubmission(parsed.definition, {
     id: 'sub-1',
@@ -304,7 +347,7 @@ describe('runPresentationSubmission', () => {
     )
 
     expect(result.valid).toBe(false)
-    expect(result.issues[0]).toContain('points at credential 5, which was not presented')
+    expect(result.issues[0]).toContain(': Points at credential 5, which was not presented')
   })
 
   it('rejects a descriptor whose path it cannot resolve', () => {
@@ -350,7 +393,7 @@ describe('runPresentationSubmission', () => {
     )
 
     expect(result.valid).toBe(false)
-    expect(result.issues[0]).toContain('points at a presentation without credentials')
+    expect(result.issues[0]).toContain(': Points at a presentation without credentials')
   })
 
   it('does not take the holder at their word about satisfying a descriptor', () => {

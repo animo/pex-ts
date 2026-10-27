@@ -7,11 +7,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   createPresentationSubmission,
+  type Descriptor,
   isSupportedJsonPath,
   type PexCredential,
   parseJsonPath,
   parsePresentationDefinition,
   queryPresentationDefinition,
+  resolveDescriptorCredential,
   runPexQuery,
   runPresentationSubmission,
   stringifyJsonPath,
@@ -301,6 +303,25 @@ describe('README: presentations', () => {
     expect(result.valid).toBe(true)
     expect(result.descriptors).toHaveLength(2)
     expect(result.issues).toEqual([])
+  })
+
+  it('resolves the presented credential of a descriptor', () => {
+    const submission = createPresentationSubmission(parsed.definition, {
+      id: 'submission-1',
+      entries: [{ input_descriptor_id: 'address', format: 'ldp_vc', presentation_index: 1, credential_index: 1 }],
+    })
+    const address: PexCredential = { credential_format: 'ldp_vc', claims: { locality: 'Köln' } }
+    const presentations = [
+      { credentials: [{ credential_format: 'dc+sd-jwt' as const, claims: { given_name: 'Erika' } }] },
+      { credentials: [{ credential_format: 'ldp_vc' as const, claims: {} }, address] },
+    ]
+
+    const resolved = resolveDescriptorCredential(submission.descriptor_map[0] as Descriptor, presentations)
+    expect(resolved).toEqual({
+      success: true,
+      location: { presentation_index: 1, credential_index: 1 },
+      credential: address,
+    })
   })
 
   it('needs exactly count of a pick requirement, and never satisfies an undeclared group', () => {

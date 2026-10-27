@@ -1,4 +1,3 @@
-import type { PexCredential } from '../pex-credential/u-pex-credential.js'
 import { evaluateCredential } from '../pex-parser/evaluate-credential.js'
 import { compileFields } from '../pex-parser/run-fields-query.js'
 import { runSubmissionRequirements } from '../pex-parser/run-submission-requirements.js'
@@ -10,20 +9,8 @@ import type {
 } from '../pex-query-result/m-pex-query-result.js'
 import type { ParsedPresentationDefinition } from '../presentation-definition/m-presentation-definition.js'
 import { shorten } from '../u-pex.js'
-import type { Descriptor, PresentationSubmission } from './m-presentation-submission.js'
-import { resolveDescriptorLocation } from './resolve-descriptor.js'
-
-/**
- * A presentation, as far as this library needs to understand one: the credentials it carries, in
- * the order a `descriptor_map` path would address them. For an mdoc device response, its documents.
- *
- * Verifying the presentation itself — signatures, holder binding, key binding JWTs, device
- * signatures — is the caller's job. This library only checks that what was presented answers
- * what was asked.
- */
-export interface PexPresentation {
-  credentials: PexCredential[]
-}
+import type { PresentationSubmission } from './m-presentation-submission.js'
+import { type PexPresentation, resolveDescriptorCredential } from './resolve-descriptor.js'
 
 export interface DescriptorResult {
   descriptor_index: number
@@ -47,47 +34,6 @@ export interface PexPresentationSubmissionResult {
 
 export interface RunPresentationSubmissionOptions {
   presentations: PexPresentation[]
-}
-
-/**
- * The credential a resolved `descriptor_map` entry points at. A path that addresses a presentation as a
- * whole selects its only credential, or for an mdoc device response the document whose doctype is the
- * input descriptor's id, as ISO 18013-7 specifies.
- */
-function selectCredential(
-  descriptor: Descriptor,
-  presentation: PexPresentation,
-  credentialIndex: number | undefined
-): { success: true; credentialIndex: number; credential: PexCredential } | { success: false; message: string } {
-  if (credentialIndex !== undefined) {
-    const credential = presentation.credentials[credentialIndex]
-    if (credential) return { success: true, credentialIndex, credential }
-    return { success: false, message: `points at credential ${credentialIndex}, which was not presented` }
-  }
-
-  const [onlyCredential, ...otherCredentials] = presentation.credentials
-  if (onlyCredential && otherCredentials.length === 0) {
-    return { success: true, credentialIndex: 0, credential: onlyCredential }
-  }
-
-  const documentIndexes = presentation.credentials
-    .map((credential, index) =>
-      credential.credential_format === 'mso_mdoc' && credential.doctype === descriptor.id ? index : undefined
-    )
-    .filter((index) => index !== undefined)
-  const [documentIndex, ...otherDocumentIndexes] = documentIndexes
-  const document = documentIndex === undefined ? undefined : presentation.credentials[documentIndex]
-  if (documentIndex !== undefined && document && otherDocumentIndexes.length === 0) {
-    return { success: true, credentialIndex: documentIndex, credential: document }
-  }
-
-  return {
-    success: false,
-    message:
-      presentation.credentials.length === 0
-        ? 'points at a presentation without credentials'
-        : `points at a presentation of ${presentation.credentials.length} credentials without selecting one, and ${documentIndexes.length} mdoc documents have doctype '${shorten(descriptor.id)}'`,
-  }
 }
 
 /**
@@ -136,22 +82,9 @@ export function runPresentationSubmission(
       continue
     }
 
-    const resolved = resolveDescriptorLocation(descriptor, { presentationCount: presentations.length })
+    const resolved = resolveDescriptorCredential(descriptor, presentations)
     if (!resolved.success) {
       issues.push(`${label}: ${resolved.message}`)
-      continue
-    }
-
-    const { presentation_index: presentationIndex } = resolved.location
-    const presentation = presentations[presentationIndex]
-    if (presentation === undefined) {
-      issues.push(`${label} points at presentation ${presentationIndex}, which was not presented`)
-      continue
-    }
-
-    const selected = selectCredential(descriptor, presentation, resolved.location.credential_index)
-    if (!selected.success) {
-      issues.push(`${label} ${selected.message}`)
       continue
     }
 
@@ -159,7 +92,7 @@ export function runPresentationSubmission(
       definition,
       inputDescriptor,
       compileFields(inputDescriptor.constraints?.fields),
-      selected.credential,
+      resolved.credential,
       { presentation: true }
     )
 
@@ -169,8 +102,8 @@ export function runPresentationSubmission(
     descriptors.push({
       descriptor_index: descriptorIndex,
       input_descriptor_id: descriptor.id,
-      presentation_index: presentationIndex,
-      credential_index: selected.credentialIndex,
+      presentation_index: resolved.location.presentation_index,
+      credential_index: resolved.location.credential_index,
       satisfied,
       fields: matches,
       reasons,
