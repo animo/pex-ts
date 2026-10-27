@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { decodeSdJwtSync, getClaimsSync } from '@sd-jwt/decode'
-import type { PexCredential } from '../../pex/src/index.js'
+import type { PexCredential } from '../../presentation-exchange/src/index.js'
 
 const hasher = (data: string | ArrayBuffer, algorithm: string) =>
   new Uint8Array(
@@ -18,7 +18,7 @@ export interface CredentialPair {
   name: string
   /** Passed to `@animo-id/pex`, which decodes it. */
   original: unknown
-  /** Passed to `@owf/pex`. */
+  /** Passed to `presentation-exchange`. */
   parsed: PexCredential
 }
 

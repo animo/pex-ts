@@ -2,7 +2,7 @@
 
 A temporary harness that runs the same presentation definitions and credentials through the
 deprecated `@animo-id/pex` (the version credo-ts pins, `^6.1.1`) and through
-`@owf/pex`, and diffs the result.
+`presentation-exchange`, and diffs the result.
 
 **Delete this package once the migration lands.** It exists only to make deliberate behaviour
 changes visible and to catch accidental ones.
@@ -28,9 +28,9 @@ full report is written to `/tmp/parity-report.txt`.
 
 ## Coverage, honestly
 
-Of the 29 definitions in the vendored DIF corpus, 13 use `pattern`, which `@owf/pex` rejects by
-design (see its README), and one uses a placeholder path. The harness asserts those rejections and
-skips them (`SKIP`). Of the 15 comparable definitions:
+Of the 29 definitions in the vendored DIF corpus, 13 use `pattern`, which
+`presentation-exchange` rejects by design (see its README), and one uses a placeholder path.
+The harness asserts those rejections and skips them (`SKIP`). Of the 15 comparable definitions:
 
 |                                                                 |     |
 | --------------------------------------------------------------- | --- |

@@ -1,4 +1,4 @@
-# @owf/pex
+# presentation-exchange
 
 A lean TypeScript implementation of [DIF Presentation Exchange][spec] v1 and v2. It covers a
 reasonable subset of the specification, the part that definitions use, and is built to be small
@@ -9,7 +9,7 @@ One runtime dependency ([zod][zod]). It does no credential parsing, crypto or si
 no JSONPath library or JSON Schema validator.
 
 ```sh
-npm install @owf/pex
+npm install presentation-exchange
 ```
 
 ## The idea
@@ -63,7 +63,7 @@ JWTs, device signatures and status lists. Those belong to the libraries that own
 ## Quick start
 
 ```ts
-import { queryPresentationDefinition } from '@owf/pex'
+import { queryPresentationDefinition } from 'presentation-exchange'
 
 const result = queryPresentationDefinition(presentationDefinition, {
   credentials: [
@@ -91,7 +91,7 @@ A credential that does not match never throws. The result reports it.
 To parse once and query many times, split the steps:
 
 ```ts
-import { parsePresentationDefinition, runPexQuery, validatePresentationDefinition } from '@owf/pex'
+import { parsePresentationDefinition, runPexQuery, validatePresentationDefinition } from 'presentation-exchange'
 
 const parsed = parsePresentationDefinition(presentationDefinition)
 validatePresentationDefinition(parsed.definition)
@@ -260,7 +260,7 @@ VC or a Linked Data credential without `selectively_disclosable`, does not match
 On the holder side, build a submission for the credentials you chose:
 
 ```ts
-import { createPresentationSubmission } from '@owf/pex'
+import { createPresentationSubmission } from 'presentation-exchange'
 
 const submission = createPresentationSubmission(parsed.definition, {
   id: crypto.randomUUID(), // you supply it; this library carries no randomness source
@@ -275,7 +275,7 @@ const submission = createPresentationSubmission(parsed.definition, {
 On the verifier side, check that a submission answers the definition:
 
 ```ts
-import { runPresentationSubmission } from '@owf/pex'
+import { runPresentationSubmission } from 'presentation-exchange'
 
 const result = runPresentationSubmission(parsed, submission, {
   // per presentation, its decoded credentials in the order a path addresses them:
@@ -302,7 +302,7 @@ binding, key binding JWTs, device signatures) remains yours.
 To read the presented credential of a descriptor after verification, resolve it the same way:
 
 ```ts
-import { resolveDescriptorCredential } from '@owf/pex'
+import { resolveDescriptorCredential } from 'presentation-exchange'
 
 const resolved = resolveDescriptorCredential(submission.descriptor_map[0], presentations)
 if (resolved.success) {

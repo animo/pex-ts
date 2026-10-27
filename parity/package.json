@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Temporary harness diffing @owf/pex against the deprecated @animo-id/pex. Delete once the migration lands.",
+  "description": "Temporary harness diffing presentation-exchange against the deprecated @animo-id/pex. Delete once the migration lands.",
   "scripts": {
     "types:check": "tsc --noEmit"
   },
