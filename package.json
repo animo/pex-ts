@@ -3,22 +3,29 @@
   "private": true,
   "version": "0.1.0",
   "license": "Apache-2.0",
-  "engines": {
-    "node": ">=20.16.0"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/animo/pex-ts"
   },
-  "packageManager": "pnpm@9.12.1+sha512.e5a7e52a4183a02d5931057f7a0dbff9d5e9ce3161e33fa68ae392125b79282a8a8a470a51dfc8a0ed86221442eb2fb57019b0990ed24fab519bf0e1bc5ccfc4",
+  "engines": {
+    "node": ">=22.11.0"
+  },
+  "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48",
   "scripts": {
     "build": "pnpm -r build",
     "types:check": "pnpm -r types:check",
-    "style": "biome check --unsafe",
-    "style:fix": "pnpm style --write",
+    "style:check": "biome check --unsafe",
+    "style:fix": "biome check --write --unsafe",
+    "packages:check": "node scripts/check-package-entrypoints.mjs",
+    "esm:check": "node scripts/check-package-esm-imports.mjs",
+    "ci:check": "pnpm style:check && pnpm types:check && pnpm test",
     "test": "vitest",
-    "release": "pnpm build && pnpm changeset publish",
-    "changeset-version": "pnpm changeset version && pnpm style:fix && git add . && git commit --amend --no-edit"
+    "release": "pnpm packages:check && pnpm types:check && pnpm build && pnpm esm:check && pnpm changeset publish --no-git-tag",
+    "changeset-version": "pnpm changeset version && pnpm style:fix"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.8",
-    "@changesets/cli": "^2.29.8",
-    "vitest": "^4.0.14"
+    "@biomejs/biome": "^2.6.3",
+    "@changesets/cli": "^3.0.3",
+    "vitest": "^5.0.5"
   }
 }

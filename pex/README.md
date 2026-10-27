@@ -2,7 +2,7 @@
 
 A lean TypeScript implementation of [DIF Presentation Exchange][spec] v1 and v2. It covers a
 reasonable subset of the specification, the part that definitions use, and is built to be small
-and safe to run on a definition from a verifier you don't know. See *Scope* for what is in and
+and safe to run on a definition from a verifier you don't know. See _Scope_ for what is in and
 what is out.
 
 One runtime dependency ([zod][zod]). It does no credential parsing, crypto or signing, and brings
@@ -37,9 +37,9 @@ Supported:
 - fields with a path, a filter, `optional`, `predicate` and `intent_to_retain`; `limit_disclosure`;
   `subject_is_issuer`; `format` restrictions on the definition or the descriptor; submission
   requirements with `all`, `pick`, `count`, `min`, `max`, `from` and `from_nested`
-- JSONPath: `.name`, `['name']`, `[0]` and `[*]` (see *Supported JSONPath*)
+- JSONPath: `.name`, `['name']`, `[0]` and `[*]` (see _Supported JSONPath_)
 - filters: `type`, `const`, `enum`, `format`, lengths and bounds, plus `not`, `contains` and `items`
-  one level deep (see *Filters*)
+  one level deep (see _Filters_)
 - SD-JWT VC, mdoc and W3C credentials as decoded claims; disclosure as data (a pruned copy, the
   paths to disclose, an mdoc namespace map); building and checking a presentation submission
 
@@ -54,7 +54,7 @@ Carried, but never evaluated:
 
 - `is_holder`, `same_subject` and `statuses`: they need holder binding, subject linkage and status
   lookups this library is never given, so a descriptor asserting one fails unless you declare that
-  you check it yourself (see *Not evaluated*)
+  you check it yourself (see _Not evaluated_)
 - `frame` and `issuance`, which no part of matching needs
 
 Out of scope by design: decoding credentials, verifying signatures, holder binding, key binding
@@ -129,16 +129,16 @@ Every format also accepts optional fields that only some constraints need. Most 
 ask for them, so they are optional. A constraint that needs one and does not get it fails, rather
 than quietly passing:
 
-| Field | Needed by |
-| --- | --- |
-| `issuer`, `subject` | `constraints.subject_is_issuer` |
-| `algorithms` | a `format` restriction's `alg` / `sd-jwt_alg_values` |
-| `proof_types` | a `format` restriction's `proof_type` |
-| `cryptosuites` | a `di*` format restriction's `cryptosuite` |
+| Field                    | Needed by                                                               |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `issuer`, `subject`      | `constraints.subject_is_issuer`                                         |
+| `algorithms`             | a `format` restriction's `alg` / `sd-jwt_alg_values`                    |
+| `proof_types`            | a `format` restriction's `proof_type`                                   |
+| `cryptosuites`           | a `di*` format restriction's `cryptosuite`                              |
 | `key_binding_algorithms` | an SD-JWT VC `format` restriction's `kb-jwt_alg_values` (presentations) |
 
 A holder can't always know these in advance, so for a query a restriction the credential declares
-nothing for is not checked. For a presentation it fails (see *Presentations*).
+nothing for is not checked. For a presentation it fails (see _Presentations_).
 
 A `format` restriction admits a credential by its designation: `jwt_vc` and `jwt_vc_json` are
 distinct, and a credential matches the one it declares. A presentation designation (`jwt_vp`,
@@ -149,11 +149,11 @@ An SD-JWT VC or an mdoc is presented as itself, so only its own designation admi
 
 A few more describe what the credential can do, or what you check yourself:
 
-| Field | Meaning |
-| --- | --- |
+| Field                     | Meaning                                                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `selectively_disclosable` | The credential can disclose selectively, which `limit_disclosure: required` needs. Defaults to `true` for SD-JWT VCs and mdocs and `false` for W3C credentials, so set it for a BBS or AnonCreds credential. |
-| `predicate_results` | A presentation holding `true` for a predicate field rather than the value, as AnonCreds presents it. Verify the predicate proof yourself. |
-| `evaluated_constraints` | Constraints you check yourself for this credential, e.g. `['statuses']` when you verify a non-revocation proof. See *Not evaluated*. |
+| `predicate_results`       | A presentation holding `true` for a predicate field rather than the value, as AnonCreds presents it. Verify the predicate proof yourself.                                                                    |
+| `evaluated_constraints`   | Constraints you check yourself for this credential, e.g. `['statuses']` when you verify a non-revocation proof. See _Not evaluated_.                                                                         |
 
 Values that are not JSON, such as an mdoc's byte strings and dates, are leaves: a path does not
 reach into them and no `type` admits them.
@@ -213,12 +213,13 @@ Each node reports how many members are needed and which are available. You choos
 
 ```ts
 for (const requirement of result.submission_requirements ?? []) {
-  requirement.rule        // 'all' | 'pick'
+  requirement.rule // 'all' | 'pick'
   requirement.needs_count // group size for `all`, else count ?? min ?? 1
   requirement.satisfied
 
-  if (requirement.from) requirement.input_descriptors // [{ input_descriptor_id, satisfied }]
-  else requirement.from_nested                        // recurses
+  if (requirement.from)
+    requirement.input_descriptors // [{ input_descriptor_id, satisfied }]
+  else requirement.from_nested // recurses
 }
 ```
 
@@ -263,7 +264,7 @@ import { createPresentationSubmission } from '@owf/pex'
 
 const submission = createPresentationSubmission(parsed.definition, {
   id: crypto.randomUUID(), // you supply it; this library carries no randomness source
-  location: 'external',    // 'external' (OpenID4VP) | 'presentation' (embedded in the VP)
+  location: 'external', // 'external' (OpenID4VP) | 'presentation' (embedded in the VP)
   entries: [
     { input_descriptor_id: 'identity', format: 'dc+sd-jwt', presentation_index: 0 },
     { input_descriptor_id: 'address', format: 'ldp_vc', presentation_index: 1, credential_index: 0 },
@@ -279,12 +280,18 @@ import { runPresentationSubmission } from '@owf/pex'
 const result = runPresentationSubmission(parsed, submission, {
   // per presentation, its decoded credentials in the order a path addresses them:
   // a W3C VP's verifiableCredential, an mdoc device response's documents, an SD-JWT VC itself
-  presentations: [{ credentials: [/* ... */] }],
+  presentations: [
+    {
+      credentials: [
+        /* ... */
+      ],
+    },
+  ],
 })
 
-result.valid       // descriptors resolved, constraints re-checked, requirements met
+result.valid // descriptors resolved, constraints re-checked, requirements met
 result.descriptors // per descriptor_map entry
-result.issues      // problems with the submission as a whole
+result.issues // problems with the submission as a whole
 ```
 
 This does not take the submission's word for anything. Each entry is re-evaluated against the
@@ -299,7 +306,7 @@ import { resolveDescriptorCredential } from '@owf/pex'
 
 const resolved = resolveDescriptorCredential(submission.descriptor_map[0], presentations)
 if (resolved.success) {
-  resolved.location   // { presentation_index, credential_index }
+  resolved.location // { presentation_index, credential_index }
   resolved.credential // the credential runPresentationSubmission evaluated for this entry
 }
 ```
@@ -345,12 +352,12 @@ them, check it yourself and say so on the credential:
 A `field.path` is a JSONPath, of which this library supports the small part that definitions use
 in a credential's field paths.
 
-| Path | Selects |
-| --- | --- |
-| `.name` | a property, named with letters, digits, `_` and `-`, e.g. `$.vct`, `$.age_equal_or_over.18` |
+| Path                   | Selects                                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `.name`                | a property, named with letters, digits, `_` and `-`, e.g. `$.vct`, `$.age_equal_or_over.18`                                |
 | `['name']`, `["name"]` | a property with any name, e.g. `$['org.iso.18013.5.1']['family_name']`, `$["@context"]`; escape the quote and `\` with `\` |
-| `[0]` | an array element |
-| `[*]`, `.*` | every array element, e.g. `$.vc.type.*`, `$.accounts[*].id` |
+| `[0]`                  | an array element                                                                                                           |
+| `[*]`, `.*`            | every array element, e.g. `$.vc.type.*`, `$.accounts[*].id`                                                                |
 
 A path starts at the claims (the namespaces of an mdoc), and is at least one segment long, as a DCQL
 claims path is: a field with path `$` would disclose the whole credential, and is rejected. A wildcard
@@ -447,7 +454,7 @@ these are the behaviour differences to know about:
   "minimum": "1999-05-16"}`, a shape the spec's own examples use, asserted nothing under ajv.
 - A presentation designation admits only the credentials it can carry, where the old
   implementation ignored a definition-level `format`.
-- Results have a different shape. There is no `SelectResults` (see *Reading the result*).
+- Results have a different shape. There is no `SelectResults` (see _Reading the result_).
 
 A harness diffing both implementations over the DIF example corpus lives in `parity/`, with its
 findings in `parity/PARITY.md`.

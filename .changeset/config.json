@@ -1,10 +1,9 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@3.0.1/schema.json",
   "changelog": "@changesets/cli/changelog",
-  "commit": false,
+  "commit": "./commit.js",
   "privatePackages": false,
-  "prettier": false,
-  "fixed": [["**"]],
+  "fixed": [["@owf/*"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
