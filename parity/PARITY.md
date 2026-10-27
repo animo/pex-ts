@@ -2,7 +2,7 @@
 
 A temporary harness that runs the same presentation definitions and credentials through the
 deprecated `@animo-id/pex` (the version credo-ts pins, `^6.1.1`) and through
-`@animo-id/dif-pex`, and diffs the result.
+`@owf/pex`, and diffs the result.
 
 **Delete this package once the migration lands.** It exists only to make deliberate behaviour
 changes visible and to catch accidental ones.
@@ -28,24 +28,28 @@ full report is written to `/tmp/parity-report.txt`.
 
 ## Coverage, honestly
 
-Of 28 comparable definitions in the vendored DIF corpus:
+Of the 29 definitions in the vendored DIF corpus, 13 use `pattern`, which `@owf/pex` rejects by
+design (see its README), and one uses a placeholder path. The harness asserts those rejections and
+skips them (`SKIP`). Of the 15 comparable definitions:
 
 | | |
 | --- | --- |
-| `OK` — agree, and at least one implementation matched something | 7 |
-| `OK?` — agree, but **both matched nothing** | 18 |
+| `OK` — agree, and at least one implementation matched something | 6 |
+| `OK?` — agree, but **both matched nothing** | 6 |
 | `DIFF` — diverge | 3 |
 
-The 18 vacuous agreements are weak evidence: those DIF examples ask for credential types
-(bank accounts, US passports, particular driver licence schemas) that the corpus has no
-credentials for, so both implementations correctly match nothing and the comparison proves
-little beyond "neither crashed".
+The vacuous agreements are weak evidence: those DIF examples ask for credential types (bank
+accounts, particular driver licence schemas, status examples) that the corpus has no credentials
+for, so both implementations correctly match nothing and the comparison proves little beyond
+"neither crashed".
 
-The 7 substantive agreements are the ones carrying weight, and they cover the harder paths:
+The 6 substantive agreements are the ones carrying weight, and they cover the harder paths:
 wildcard paths into arrays (`$.order.paxSegments[*].operatingCarrierFlightNumber`), SD-JWT
 selective disclosure, multi-format definitions with submission requirements, and predicates.
 
-Adding credential fixtures for the remaining 18 would be the highest-value improvement here.
+Adding credential fixtures for the vacuous 6 would be the highest-value improvement here. The 13
+skipped definitions can only be compared by rewriting their `pattern` filters as `const`, `enum` or
+`contains`, which would no longer be the DIF examples.
 
 ## Known divergences
 

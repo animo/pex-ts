@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { type CredentialPair, toCredentialPairs } from './convert.js'
 import { formatMatchMap, runNew, runOld } from './matches.js'
 
-const definitionsDir = fileURLToPath(new URL('../../dif-pex/fixtures/dif-pe-examples', import.meta.url))
+const definitionsDir = fileURLToPath(new URL('../../pex/fixtures/dif-pe-examples', import.meta.url))
 const credentialsDir = fileURLToPath(new URL('../fixtures/vc', import.meta.url))
 
 function loadDefinitions() {
@@ -32,6 +32,26 @@ function loadCredentials(): CredentialPair[] {
 const notComparable = new Set([
   // Placeholder paths (`"path": ["A"]`) that are not JSONPath under any implementation.
   'pdV1/input_descriptor_filter_examples.json',
+])
+
+/**
+ * Definitions `@owf/pex` rejects at parse by design, because they use `pattern` (see its README). There is
+ * nothing to compare, but the rejection is asserted so that the list stays honest.
+ */
+const rejectsPattern = new Set([
+  'pdV1/input_descriptor_filter_simple_example.json',
+  'pdV1/input_descriptor_id_token_example.json',
+  'pdV1/input_descriptor_simple_example.json',
+  'pdV1/pd-schema-invalid-predicates.json',
+  'pdV1/sr_all_rule.json',
+  'pdV1/sr_basic.json',
+  'pdV1/sr_pick_rule.json',
+  'pdV1/sr_pick_rule_from_nested.json',
+  'pdV1/sr_pick_rule_min_2.json',
+  'pdV2/pd-multi-sd-jwt-vp.json',
+  'pdV2/pd_basic_example(corrected).json',
+  'pdV2/pd_multi_group_example(corrected).json',
+  'pdV2/pd_single_group_example(corrected).json',
 ])
 
 /**
@@ -76,6 +96,12 @@ describe('parity with @animo-id/pex', () => {
     for (const { name, definition } of definitions) {
       if (notComparable.has(name)) continue
 
+      if (rejectsPattern.has(name)) {
+        expect(runNew(definition, credentials).error, name).toContain('"pattern"')
+        report.push(`SKIP ${name} (pattern)`)
+        continue
+      }
+
       const oldOutcome = runOld(definition, credentials)
       const newOutcome = runNew(definition, credentials)
 
@@ -117,7 +143,7 @@ describe('parity with @animo-id/pex', () => {
     let vacuous = 0
 
     for (const { name, definition } of definitions) {
-      if (notComparable.has(name) || knownDivergences.includes(name)) continue
+      if (notComparable.has(name) || rejectsPattern.has(name) || knownDivergences.includes(name)) continue
 
       const matched = [runOld(definition, credentials), runNew(definition, credentials)].some((outcome) =>
         [...outcome.matches.values()].some((indices) => indices.size > 0)
@@ -130,6 +156,6 @@ describe('parity with @animo-id/pex', () => {
     // Both implementations matching nothing is agreement, but weak evidence. Asserting the
     // split keeps the harness honest: if fixtures are added, this number must be raised, and if
     // coverage silently regresses, this fails.
-    expect({ substantive, vacuous }).toEqual({ substantive: 7, vacuous: 18 })
+    expect({ substantive, vacuous }).toEqual({ substantive: 6, vacuous: 6 })
   })
 })

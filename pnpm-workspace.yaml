@@ -1,9 +1,10 @@
 packages:
-  - dif-pex
+  - pex
   - parity
 
 catalog:
   '@types/node': ^24.10.1
+  fast-check: ^4.10.2
   tsx: ^4.11.2
   tsdown: ^0.16.8
   typescript: ~5.9.3
