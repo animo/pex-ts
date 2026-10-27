@@ -8,4 +8,4 @@ catalog:
   tsx: ^4.11.2
   tsdown: ^0.16.8
   typescript: ~5.9.3
-  zod: ^4.1.12
+  zod: ^4.6.6
