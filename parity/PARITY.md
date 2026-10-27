@@ -9,17 +9,17 @@ changes visible and to catch accidental ones.
 
 ## What is compared
 
-Result *structures* differ by design (see `PLAN.md` §7), so the harness compares a projection
+Result _structures_ differ by design (see `PLAN.md` §7), so the harness compares a projection
 both implementations can express: **which input descriptors were satisfied, by which
 credentials**, plus whether the definition as a whole is satisfiable.
 
 Decoding is done once, in `src/convert.ts`, using the same `@sd-jwt` version the deprecated
 implementation uses internally. Both sides therefore see identical claims, and the comparison
-isolates *matching* behaviour rather than decoding behaviour.
+isolates _matching_ behaviour rather than decoding behaviour.
 
 ## Running it
 
-```
+```sh
 pnpm vitest run parity.test
 ```
 
@@ -32,11 +32,11 @@ Of the 29 definitions in the vendored DIF corpus, 13 use `pattern`, which `@owf/
 design (see its README), and one uses a placeholder path. The harness asserts those rejections and
 skips them (`SKIP`). Of the 15 comparable definitions:
 
-| | |
-| --- | --- |
-| `OK` — agree, and at least one implementation matched something | 6 |
-| `OK?` — agree, but **both matched nothing** | 6 |
-| `DIFF` — diverge | 3 |
+|                                                                 |     |
+| --------------------------------------------------------------- | --- |
+| `OK` — agree, and at least one implementation matched something | 6   |
+| `OK?` — agree, but **both matched nothing**                     | 6   |
+| `DIFF` — diverge                                                | 3   |
 
 The vacuous agreements are weak evidence: those DIF examples ask for credential types (bank
 accounts, particular driver licence schemas, status examples) that the corpus has no credentials
@@ -69,7 +69,7 @@ binding information this library is never given. The deprecated implementation a
 constraint and returns success regardless — a silent false claim of compliance. Per decision
 §14.4 this fails loudly instead.
 
-Worth noting these are *DIF specification examples*, not contrived cases: `is_holder` is used in
+Worth noting these are _DIF specification examples_, not contrived cases: `is_holder` is used in
 practice, and any caller relying on it must now check it themselves. This is the divergence most
 likely to be felt during migration.
 
@@ -90,11 +90,11 @@ The harness earned its keep by catching two bugs that reasoning had missed:
 
 1. **Presentation formats were being applied to credentials.** `getEffectiveFormat` fell back to
    the definition-level `format`, and both failing definitions declare
-   `format: {"ldp_vp": {...}}` — a *presentation* encoding. A credential is never `ldp_vp`, so
+   `format: {"ldp_vp": {...}}` — a _presentation_ encoding. A credential is never `ldp_vp`, so
    every credential was rejected. Fixed by filtering a `format` to its credential designations
    before matching, and treating a `format` that names none of them as no restriction.
    See `credentialFormatDesignations` in `m-format.ts`.
 2. **A harness bug, not a library one**: `areRequiredCredentialsPresent === 'info'` was being
-   read as "satisfiable". The deprecated implementation returns `warn` when *more* credentials
+   read as "satisfiable". The deprecated implementation returns `warn` when _more_ credentials
    match a descriptor than are needed, which is ambiguity rather than failure. Corrected to
    `!== 'error'`.

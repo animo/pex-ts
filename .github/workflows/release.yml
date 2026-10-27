@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release-stable:
+    runs-on: ubuntu-24.04
+    name: Release Stable
+    env:
+      NPM_CONFIG_PROVENANCE: "true"
+    permissions:
+      contents: write
+      id-token: write # Needed for npm trusted publishing
+      pull-requests: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          pr-title: "chore(release): new version"
+          commit-message: "chore(release): new version"
+          publish-script: pnpm release
+          version-script: pnpm changeset-version
+          push-with-git-cli: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current package version
+        id: get_version
+        run: echo "current_package_version=$(node -p "require('./pex/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create Github Release
+        if: "startsWith(github.event.head_commit.message, 'chore(release): new version')"
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: v${{ steps.get_version.outputs.current_package_version }}
+
+  release-unstable:
+    runs-on: ubuntu-24.04
+    name: Release Unstable
+    needs: release-stable
+    if: always() && github.event_name == 'push' && needs.release-stable.outputs.published == 'false'
+    env:
+      NPM_CONFIG_PROVENANCE: "true"
+    permissions:
+      contents: write
+      id-token: write # Needed for npm trusted publishing
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create unstable release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # ensure there's always a patch release created
+          cat << 'EOF' > .changeset/snapshot-template-changeset.md
+          ---
+          '@owf/pex': patch
+          ---
+
+          snapshot release
+          EOF
+
+          pnpm changeset version --snapshot alpha
+          pnpm style:fix
+          pnpm types:check
+          pnpm build
+          pnpm esm:check
+          pnpm changeset publish --tag alpha
+
+          CURRENT_PACKAGE_VERSION=$(node -p "require('./pex/package.json').version")
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag v$CURRENT_PACKAGE_VERSION
+          git push origin v$CURRENT_PACKAGE_VERSION --no-verify

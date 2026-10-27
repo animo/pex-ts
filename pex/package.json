@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "description": "A lean TypeScript implementation of the DIF Presentation Exchange v1 and v2 specification",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/animo/pex-ts",
+    "directory": "pex"
+  },
+  "homepage": "https://github.com/animo/pex-ts/tree/main/pex",
   "private": false,
   "type": "module",
   "exports": "./src/index.ts",
   "publishConfig": {
+    "access": "public",
     "main": "./dist/index.mjs",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.mts",
