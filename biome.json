@@ -2,7 +2,7 @@
   "$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
   "files": {
     "maxSize": 10000000,
-    "includes": ["**", "!pnpm-lock.yaml"]
+    "includes": ["**", "!pnpm-lock.yaml", "!.changeset/*.md"]
   },
   "formatter": {
     "lineWidth": 120,
