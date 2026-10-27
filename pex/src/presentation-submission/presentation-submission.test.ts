@@ -580,6 +580,71 @@ describe('runPresentationSubmission checks', () => {
     expect(single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['NL'] } }).valid).toBe(true)
   })
 
+  it('passes an optional field whose index matched only elements failing the filter, as that one may be withheld', () => {
+    const definition = {
+      id: 'd',
+      input_descriptors: [
+        {
+          id: 'x',
+          constraints: {
+            fields: [
+              { path: ['$.nationalities[2]'], optional: true, filter: { const: 'NL' } },
+              { path: ['$.nationalities[0]'] },
+            ],
+          },
+        },
+      ],
+    }
+    // The holder had one nationality, so the optional field resolved nothing for them
+    const result = single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['DE'] } })
+
+    expect(result.valid).toBe(true)
+    expect(result.descriptors[0]?.fields[0]).toMatchObject({ field_index: 0, nodes: [] })
+  })
+
+  it('tries the next path when an index matched only elements failing the filter', () => {
+    const definition = {
+      id: 'd',
+      input_descriptors: [
+        {
+          id: 'x',
+          constraints: {
+            fields: [{ path: ['$.nationalities[1]', '$.nationality'], filter: { const: 'NL' } }],
+          },
+        },
+      ],
+    }
+
+    expect(
+      single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['DE'], nationality: 'NL' } }).valid
+    ).toBe(true)
+    // Without an index, the first path that resolves still decides
+    expect(
+      single(
+        {
+          ...definition,
+          input_descriptors: [
+            { id: 'x', constraints: { fields: [{ path: ['$.country', '$.nationality'], filter: { const: 'NL' } }] } },
+          ],
+        },
+        { credential_format: 'dc+sd-jwt', claims: { country: 'DE', nationality: 'NL' } }
+      ).valid
+    ).toBe(false)
+  })
+
+  it('fails a required field whose index matched only elements failing the filter', () => {
+    const definition = {
+      id: 'd',
+      input_descriptors: [
+        { id: 'x', constraints: { fields: [{ path: ['$.nationalities[1]'], filter: { const: 'NL' } }] } },
+      ],
+    }
+    const result = single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['DE'] } })
+
+    expect(result.valid).toBe(false)
+    expect(result.descriptors[0]?.reasons[0]).toMatchObject({ type: 'field', cause: 'filter_failed' })
+  })
+
   it('accepts a predicate result only from a credential that declares it presents them', () => {
     const definition = {
       id: 'd',

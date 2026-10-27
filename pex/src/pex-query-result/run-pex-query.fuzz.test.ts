@@ -68,20 +68,6 @@ function present(value: unknown, paths: PathComponent[][]): unknown {
   return output
 }
 
-/**
- * Whether a field has a path with an array index that may resolve for the verifier where it resolved nothing
- * for the holder. A verifier matches an index against any element, as the holder withholds elements, so an
- * optional field's path, or a path tried before the one that resolved, can resolve to another element of the
- * presentation, and then its filter applies.
- */
-function hasAmbiguousIndex(definition: { input_descriptors: Array<{ constraints: { fields: object[] } }> }) {
-  return definition.input_descriptors.some((inputDescriptor) =>
-    (inputDescriptor.constraints.fields as Array<{ path: string[]; optional?: boolean }>).some(
-      (field) => (field.optional === true || field.path.length > 1) && field.path.some((path) => /\[\d+\]/.test(path))
-    )
-  )
-}
-
 describe('runPexQuery fuzz', () => {
   it('only matches nodes that are in the credential and pass the filter', () => {
     fc.assert(
@@ -174,7 +160,7 @@ describe('runPexQuery fuzz', () => {
       fc.property(arbitraryQueryCase, ({ definition, credentials }) => {
         const parsed = parsePresentationDefinition(definition)
         const result = runPexQuery(parsed, { credentials })
-        if (!result.can_be_satisfied || hasAmbiguousIndex(definition)) return
+        if (!result.can_be_satisfied) return
 
         const chosen = result.input_descriptors.map((inputDescriptor) => {
           const match = inputDescriptor.matching_credentials[0]

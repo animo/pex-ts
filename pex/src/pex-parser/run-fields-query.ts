@@ -46,6 +46,9 @@ export interface RunFieldQueryOptions {
  * how a definition expresses one claim across credential shapes, e.g.
  * `["$.issuer", "$.vc.issuer", "$.iss"]`.
  *
+ * In a presentation, a path with an array index resolves only when an element passes the filter: the
+ * index matches any element there, and the one it names may have been withheld.
+ *
  * Where a path resolves to several nodes (through a wildcard), the field matches if **any** of
  * them satisfies the filter, and every node that satisfies it is reported — as dcql-ts does for a
  * `null` path element. The previous implementation reported `inputField[0]` regardless of which
@@ -61,15 +64,6 @@ export function runFieldQuery(
   const isOptional = 'optional' in field && field.optional === true
   const intentToRetain = 'intent_to_retain' in field ? field.intent_to_retain : undefined
 
-  let resolved: { path: string; nodes: JsonPathNode[] } | undefined
-  for (const { path, segments } of compiled.paths) {
-    const nodes = queryJsonPath(claims, segments, { anyArrayIndex: options.presentation })
-    if (nodes.length > 0) {
-      resolved = { path, nodes }
-      break
-    }
-  }
-
   const toMatch = (matchedPath: string, nodes: JsonPathNode[]): FieldMatch => ({
     field_index: index,
     field_id: field.id,
@@ -80,38 +74,7 @@ export function runFieldQuery(
     intent_to_retain: intentToRetain,
   })
 
-  if (resolved === undefined) {
-    if (isOptional) return { success: true, match: toMatch(compiled.paths[0]?.path ?? '', []) }
-
-    return {
-      success: false,
-      reason: {
-        type: 'field',
-        field_index: index,
-        field_id: field.id,
-        paths: field.path,
-        cause: 'path_not_found',
-        message: `No path resolved: '${field.path.join("', '")}'`,
-      },
-    }
-  }
-
-  if (field.filter === undefined) return { success: true, match: toMatch(resolved.path, resolved.nodes) }
-
-  const filter = field.filter
-  const failures: FilterIssue[] = []
-  const matching = resolved.nodes.filter((node) => {
-    // A zero-knowledge presentation holds the predicate's result, not the value
-    if (options.predicateResults && field.predicate !== undefined && node.value === true) return true
-
-    const result = runFilter(node.value, filter)
-    if (!result.success) failures.push(...result.issues)
-    return result.success
-  })
-
-  if (matching.length > 0) return { success: true, match: toMatch(resolved.path, matching) }
-
-  return {
+  const filterFailed = (path: string, failures: FilterIssue[]): FieldResult => ({
     success: false,
     reason: {
       type: 'field',
@@ -120,7 +83,53 @@ export function runFieldQuery(
       paths: field.path,
       cause: 'filter_failed',
       issues: failures,
-      message: `Value at '${resolved.path}' did not satisfy the filter: ${failures.map((issue) => issue.message).join('; ')}`,
+      message: `Value at '${path}' did not satisfy the filter: ${failures.map((issue) => issue.message).join('; ')}`,
+    },
+  })
+
+  // The first path in a presentation whose index matched only elements failing the filter
+  let unmatchedIndex: { path: string; failures: FilterIssue[] } | undefined
+
+  for (const { path, segments } of compiled.paths) {
+    const nodes = queryJsonPath(claims, segments, { anyArrayIndex: options.presentation })
+    if (nodes.length === 0) continue
+
+    const failures: FilterIssue[] = []
+    const matching = nodes.filter((node) => {
+      if (field.filter === undefined) return true
+      // A zero-knowledge presentation holds the predicate's result, not the value
+      if (options.predicateResults && field.predicate !== undefined && node.value === true) return true
+
+      const result = runFilter(node.value, field.filter)
+      if (!result.success) failures.push(...result.issues)
+      return result.success
+    })
+
+    if (matching.length > 0) return { success: true, match: toMatch(path, matching) }
+
+    // In a presentation an index matches any element, so the elements that failed may all be other ones than
+    // the path names, which the holder may have withheld. Like a path that resolves nothing, the field then
+    // tries its next path, or passes when optional.
+    if (options.presentation && segments.some((segment) => typeof segment === 'number')) {
+      unmatchedIndex ??= { path, failures }
+      continue
+    }
+
+    return filterFailed(path, failures)
+  }
+
+  if (isOptional) return { success: true, match: toMatch(compiled.paths[0]?.path ?? '', []) }
+  if (unmatchedIndex) return filterFailed(unmatchedIndex.path, unmatchedIndex.failures)
+
+  return {
+    success: false,
+    reason: {
+      type: 'field',
+      field_index: index,
+      field_id: field.id,
+      paths: field.path,
+      cause: 'path_not_found',
+      message: `No path resolved: '${field.path.join("', '")}'`,
     },
   }
 }
