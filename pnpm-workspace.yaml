@@ -1,5 +1,5 @@
 packages:
-  - pex
+  - presentation-exchange
   - parity
 
 catalog:

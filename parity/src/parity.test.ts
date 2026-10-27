@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { type CredentialPair, toCredentialPairs } from './convert.js'
 import { formatMatchMap, runNew, runOld } from './matches.js'
 
-const definitionsDir = fileURLToPath(new URL('../../pex/fixtures/dif-pe-examples', import.meta.url))
+const definitionsDir = fileURLToPath(new URL('../../presentation-exchange/fixtures/dif-pe-examples', import.meta.url))
 const credentialsDir = fileURLToPath(new URL('../fixtures/vc', import.meta.url))
 
 function loadDefinitions() {
@@ -35,8 +35,8 @@ const notComparable = new Set([
 ])
 
 /**
- * Definitions `@owf/pex` rejects at parse by design, because they use `pattern` (see its README). There is
- * nothing to compare, but the rejection is asserted so that the list stays honest.
+ * Definitions `presentation-exchange` rejects at parse by design, because they use `pattern` (see its
+ * README). There is nothing to compare, but the rejection is asserted so that the list stays honest.
  */
 const rejectsPattern = new Set([
   'pdV1/input_descriptor_filter_simple_example.json',

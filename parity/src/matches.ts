@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { PEX } from '@animo-id/pex'
-import { parsePresentationDefinition, queryPresentationDefinition } from '../../pex/src/index.js'
+import { parsePresentationDefinition, queryPresentationDefinition } from '../../presentation-exchange/src/index.js'
 import type { CredentialPair } from './convert.js'
 
 /** The deprecated implementation decodes SD-JWTs itself, and needs a hasher to do it. */
