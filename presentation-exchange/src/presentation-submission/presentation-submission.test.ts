@@ -602,7 +602,7 @@ describe('runPresentationSubmission checks', () => {
     expect(result.descriptors[0]?.fields[0]).toMatchObject({ field_index: 0, nodes: [] })
   })
 
-  it('tries the next path when an index matched only elements failing the filter', () => {
+  it('tries the next path when a path matched only values failing the filter', () => {
     const definition = {
       id: 'd',
       input_descriptors: [
@@ -618,7 +618,7 @@ describe('runPresentationSubmission checks', () => {
     expect(
       single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['DE'], nationality: 'NL' } }).valid
     ).toBe(true)
-    // Without an index, the first path that resolves still decides
+    // Without an index, a path whose value fails the filter also passes on to the next path
     expect(
       single(
         {
@@ -629,7 +629,7 @@ describe('runPresentationSubmission checks', () => {
         },
         { credential_format: 'dc+sd-jwt', claims: { country: 'DE', nationality: 'NL' } }
       ).valid
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('fails a required field whose index matched only elements failing the filter', () => {
