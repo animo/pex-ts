@@ -214,25 +214,6 @@ function setPredicateResult(output: Record<string, unknown>, path: PathComponent
 }
 
 /**
- * The data elements an mdoc path discloses. An mdoc discloses whole elements, `$['namespace']['element']`:
- * a path that points inside an element's value discloses the element, and one that names a namespace
- * discloses every element in it.
- */
-function mdocElementPaths(namespaces: Record<string, unknown>, path: PathComponent[]): PathComponent[][] {
-  const [namespace, element] = path
-
-  const elementsOf = (name: string): PathComponent[][] => {
-    const elements = Object.hasOwn(namespaces, name) ? namespaces[name] : undefined
-    return isPlainObject(elements) ? Object.keys(elements).map((identifier) => [name, identifier]) : []
-  }
-
-  // A field path is never `$`, and a position doesn't resolve in the namespaces
-  if (typeof namespace !== 'string') return []
-  if (typeof element !== 'string') return elementsOf(namespace)
-  return [[namespace, element]]
-}
-
-/**
  * Build what to disclose from a credential, given the fields that matched it.
  *
  * Nothing is mutated, and nothing returned shares an object with the credential: the caller applies the
@@ -240,15 +221,14 @@ function mdocElementPaths(namespaces: Record<string, unknown>, path: PathCompone
  * mdoc dependency, where the previous implementation rewrote the credential in place through
  * `@sd-jwt/present` and `@animo-id/mdoc`.
  *
- * The result depends only on the set of matched paths, not on the order of the fields. For an mdoc the
- * paths are widened to the data elements they point into, as that is what an mdoc discloses.
+ * The result depends only on the set of matched paths, not on the order of the fields. For an mdoc each path is a
+ * data element, `$['namespace']['element']`, as ISO 18013-7 requires and `getPresentationDefinitionIssues` checks.
  */
 export function buildLimitDisclosure(credential: PexCredential, matches: FieldMatch[]): LimitDisclosureResult {
   const claims = getCredentialClaims(credential)
   const isMdoc = credential.credential_format === 'mso_mdoc'
 
-  const pathsOf = (match: FieldMatch): PathComponent[][] =>
-    isMdoc ? match.nodes.flatMap(({ path }) => mdocElementPaths(claims, path)) : match.nodes.map(({ path }) => path)
+  const pathsOf = (match: FieldMatch): PathComponent[][] => match.nodes.map(({ path }) => path)
 
   const valuePaths = matches.filter((match) => match.predicate === undefined).flatMap(pathsOf)
   const predicatePaths = matches.filter((match) => match.predicate !== undefined).flatMap(pathsOf)

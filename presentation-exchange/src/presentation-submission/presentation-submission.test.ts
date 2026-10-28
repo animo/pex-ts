@@ -501,12 +501,14 @@ describe('runPresentationSubmission checks', () => {
   it('checks the doctype of an mdoc', () => {
     const definition = {
       id: 'd',
+      format: { mso_mdoc: { alg: ['ES256'] } },
       input_descriptors: [
         { id: 'org.iso.18013.5.1.mDL', constraints: { fields: [{ path: ["$['org.iso.18013.5.1']['family_name']"] }] } },
       ],
     }
     const mdoc = (doctype: string): PexCredential => ({
       credential_format: 'mso_mdoc',
+      algorithms: ['ES256'],
       doctype,
       namespaces: { 'org.iso.18013.5.1': { family_name: 'Mustermann' } },
     })
@@ -518,6 +520,7 @@ describe('runPresentationSubmission checks', () => {
   it('selects the mdoc document of a device response by doctype', () => {
     const definition = parsePresentationDefinition({
       id: 'd',
+      format: { mso_mdoc: { alg: ['ES256'] } },
       input_descriptors: [
         { id: 'org.iso.18013.5.1.mDL', constraints: { fields: [{ path: ["$['org.iso.18013.5.1']['family_name']"] }] } },
         {
@@ -530,11 +533,13 @@ describe('runPresentationSubmission checks', () => {
       credentials: [
         {
           credential_format: 'mso_mdoc' as const,
+          algorithms: ['ES256'],
           doctype: 'eu.europa.ec.eudi.pid.1',
           namespaces: { 'eu.europa.ec.eudi.pid.1': { given_name: 'Erika' } },
         },
         {
           credential_format: 'mso_mdoc' as const,
+          algorithms: ['ES256'],
           doctype: 'org.iso.18013.5.1.mDL',
           namespaces: { 'org.iso.18013.5.1': { family_name: 'Mustermann' } },
         },
@@ -578,6 +583,34 @@ describe('runPresentationSubmission checks', () => {
 
     // The holder disclosed only the second element, which is the first after presenting
     expect(single(definition, { credential_format: 'dc+sd-jwt', claims: { nationalities: ['NL'] } }).valid).toBe(true)
+  })
+
+  it('matches an array index as it is in a credential that is presented with all array elements', () => {
+    const definition = {
+      id: 'd',
+      input_descriptors: [
+        { id: 'x', constraints: { fields: [{ path: ['$.nationalities[0]'], filter: { const: 'NL' } }] } },
+      ],
+    }
+    const nationalities = ['DE', 'NL']
+
+    // A JWT VC or Linked Data credential is presented in full, so the first element is the one the path names
+    for (const credential of [
+      { credential_format: 'jwt_vc_json', claims: { nationalities } },
+      { credential_format: 'ldp_vc', claims: { nationalities } },
+    ] satisfies PexCredential[]) {
+      const result = single(definition, credential)
+      expect(result.valid).toBe(false)
+      expect(result.descriptors[0]?.reasons[0]).toMatchObject({ type: 'field', cause: 'filter_failed' })
+    }
+
+    // An SD-JWT VC, or a W3C credential that discloses selectively, can withhold the first element
+    for (const credential of [
+      { credential_format: 'dc+sd-jwt', claims: { nationalities } },
+      { credential_format: 'ldp_vc', selectively_disclosable: true, claims: { nationalities } },
+    ] satisfies PexCredential[]) {
+      expect(single(definition, credential).valid).toBe(true)
+    }
   })
 
   it('passes an optional field whose index matched only elements failing the filter, as that one may be withheld', () => {

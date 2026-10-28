@@ -229,7 +229,7 @@ describe('format restriction', () => {
   })
 
   it('rejects a credential whose format is not designated', () => {
-    const result = query(definition({ mso_mdoc: { alg: ['ES256'] } }), [sdJwtCredential])
+    const result = query(definition({ jwt_vc_json: { alg: ['ES256'] } }), [sdJwtCredential])
     expect(result.can_be_satisfied).toBe(false)
     expect(result.input_descriptors[0]?.non_matching_credentials[0]?.reasons[0]).toMatchObject({ type: 'format' })
   })
@@ -467,48 +467,39 @@ describe('mdoc', () => {
     expect(JSON.stringify(disclosure)).not.toContain('X1234')
   })
 
-  it('discloses a whole data element when a path points inside it', () => {
-    const privileges = [{ vehicle_category_code: 'B', issue_date: '2010-01-01' }]
-    const credential: PexCredential = {
-      credential_format: 'mso_mdoc',
-      doctype: 'org.iso.18013.5.1.mDL',
-      namespaces: { 'org.iso.18013.5.1': { driving_privileges: privileges, family_name: 'Mustermann' } },
-    }
-    const fields = [{ path: ["$['org.iso.18013.5.1']['driving_privileges'][0]['vehicle_category_code']"] }]
-    const result = query(
-      {
-        ...definition,
-        input_descriptors: [
-          { ...definition.input_descriptors[0], constraints: { limit_disclosure: 'required', fields } },
-        ],
-      },
-      [credential]
-    )
+  it('only matches an input descriptor whose format names mso_mdoc, per ISO 18013-7', () => {
+    const { format: _format, ...inputDescriptor } = definition
+      .input_descriptors[0] as (typeof definition.input_descriptors)[0]
+    const result = query({ ...definition, input_descriptors: [inputDescriptor] }, [mdocCredential])
 
-    const disclosure = result.input_descriptors[0]?.matching_credentials[0]?.disclosure
-    expect(disclosure?.output).toEqual({ 'org.iso.18013.5.1': { driving_privileges: privileges } })
-    expect(disclosure?.namespaces).toEqual({ 'org.iso.18013.5.1': { driving_privileges: false } })
+    expect(result.can_be_satisfied).toBe(false)
+    expect(result.input_descriptors[0]?.non_matching_credentials[0]?.reasons).toEqual([
+      expect.objectContaining({ type: 'format', message: expect.stringContaining("names 'mso_mdoc'") }),
+    ])
+
+    // A definition-level format applies too
+    expect(
+      query({ ...definition, format: { mso_mdoc: { alg: ['ES256'] } }, input_descriptors: [inputDescriptor] }, [
+        mdocCredential,
+      ]).can_be_satisfied
+    ).toBe(true)
   })
 
-  it('requests every element of a namespace a path names', () => {
-    const fields = [{ path: ["$['org.iso.18013.5.1']"], intent_to_retain: true }]
-    const result = query(
-      {
-        ...definition,
-        input_descriptors: [
-          { ...definition.input_descriptors[0], constraints: { limit_disclosure: 'required', fields } },
-        ],
-      },
-      [mdocCredential]
-    )
+  it.each([
+    ['a path into the value of a data element', "$['org.iso.18013.5.1']['driving_privileges'][0]"],
+    ['a path that names a namespace', "$['org.iso.18013.5.1']"],
+  ])('rejects %s, per ISO 18013-7', (_label, path) => {
+    const fields = [{ path: [path], intent_to_retain: false }]
+    const invalid = {
+      ...definition,
+      input_descriptors: [
+        { ...definition.input_descriptors[0], constraints: { limit_disclosure: 'required', fields } },
+      ],
+    }
 
-    const disclosure = result.input_descriptors[0]?.matching_credentials[0]?.disclosure
-    expect(disclosure?.namespaces).toEqual({
-      'org.iso.18013.5.1': { family_name: true, birth_date: true, document_number: true },
-    })
-    expect(disclosure?.output).toEqual({
-      'org.iso.18013.5.1': { family_name: 'Mustermann', birth_date: '1963-08-12', document_number: 'X1234' },
-    })
+    expect(() => query(invalid, [mdocCredential])).toThrow(
+      `$.input_descriptors[0].constraints.fields[0].path[0]: An mdoc path names one data element, $['<namespace>']['<data element identifier>'] (ISO 18013-7), not '${path}'`
+    )
   })
 
   it('requires the input descriptor id to be the doctype, per ISO 18013-7', () => {
@@ -883,33 +874,6 @@ describe('disclosure safety', () => {
     ])
   })
 
-  it('requests the mdoc data element of a path that points inside its value', () => {
-    const credential: PexCredential = {
-      credential_format: 'mso_mdoc',
-      doctype: 'org.iso.18013.5.1.mDL',
-      namespaces: { 'org.iso.18013.5.1': { driving_privileges: [{ vehicle_category_code: 'B' }] } },
-    }
-    const result = query(
-      {
-        id: 'd',
-        input_descriptors: [
-          {
-            id: 'org.iso.18013.5.1.mDL',
-            constraints: {
-              limit_disclosure: 'required',
-              fields: [{ path: ["$['org.iso.18013.5.1']['driving_privileges'][*]"], intent_to_retain: true }],
-            },
-          },
-        ],
-      },
-      [credential]
-    )
-
-    const disclosure = result.input_descriptors[0]?.matching_credentials[0]?.disclosure
-    expect(disclosure?.namespaces).toEqual({ 'org.iso.18013.5.1': { driving_privileges: true } })
-    expect(disclosure?.paths).toEqual([['org.iso.18013.5.1', 'driving_privileges']])
-  })
-
   it('discloses a credential nested deeper than the call stack allows', () => {
     // A JSON document of a few hundred kilobytes nests this deep, and JSON.parse reads it without recursing
     let deep: unknown = 'leaf'
@@ -940,6 +904,7 @@ describe('disclosure safety', () => {
         input_descriptors: [
           {
             id: 'org.iso.18013.5.1.mDL',
+            format: { mso_mdoc: { alg: ['ES256'] } },
             constraints: {
               limit_disclosure: 'required',
               fields: [

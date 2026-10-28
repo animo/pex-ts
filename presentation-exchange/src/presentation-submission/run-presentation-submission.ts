@@ -46,7 +46,8 @@ export interface RunPresentationSubmissionOptions {
  * or the holder's claim to have satisfied a descriptor.
  *
  * Every check the holder-side query runs is run here too, with these differences for presented
- * credentials: an array index in a path matches any element (the elements a holder withheld are absent),
+ * credentials: an array index in a path matches any element of a credential that can withhold array elements, such
+ * as an SD-JWT VC (the elements a holder withheld are absent),
  * a format restriction on algorithms, proof types or cryptosuites fails when the credential declares none,
  * and a `pick` requirement needs exactly `count` of its members, or no more than `max`.
  *

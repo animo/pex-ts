@@ -6,6 +6,7 @@ export type {
   PexW3cVcCredential,
 } from './u-pex-credential.js'
 export {
+  canWithholdArrayElements,
   getCredentialClaims,
   isSelectivelyDisclosable,
   zPexCredential,

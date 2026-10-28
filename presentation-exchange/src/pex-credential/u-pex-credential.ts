@@ -26,14 +26,6 @@ const credentialBase = {
   key_binding_algorithms: z.array(z.string()).nonempty().optional(),
 
   /**
-   * Whether the credential can disclose its claims selectively, which `limit_disclosure: required` needs.
-   * Defaults to `true` for SD-JWT VCs and mdocs, and to `false` for W3C credentials: a JWT VC never can,
-   * and a Linked Data or Data Integrity credential only with a suite like BBS or AnonCreds, which the caller
-   * knows and this library does not.
-   */
-  selectively_disclosable: z.boolean().optional(),
-
-  /**
    * The credential is a presentation in which a field with a `predicate` holds `true` rather than the
    * value, as zero-knowledge formats like AnonCreds present it. Such a field then also accepts `true`.
    * The caller must verify the predicate proof itself.
@@ -82,6 +74,12 @@ export const zPexW3cVcCredential = z.object({
   ...credentialBase,
   credential_format: z.enum(['jwt', 'jwt_vc', 'jwt_vc_json', 'ldp', 'ldp_vc', 'di', 'di_vc']),
   claims: zJsonObject,
+  /**
+   * Whether the credential can disclose its claims selectively, which `limit_disclosure: required` needs.
+   * Defaults to `false`: a JWT VC never can, and a Linked Data or Data Integrity credential only with a suite
+   * like BBS or AnonCreds, which the caller knows and this library does not. An SD-JWT VC or an mdoc always can.
+   */
+  selectively_disclosable: z.boolean().optional(),
 })
 export type PexW3cVcCredential = z.output<typeof zPexW3cVcCredential>
 
@@ -96,15 +94,28 @@ export type PexCredential = z.output<typeof zPexCredential>
 export type PexCredentialFormat = PexCredential['credential_format']
 
 /**
- * Whether a credential can disclose selectively, see `selectively_disclosable`.
+ * Whether a credential can disclose selectively: an SD-JWT VC or an mdoc always, a W3C credential when it declares
+ * `selectively_disclosable`.
  */
 export function isSelectivelyDisclosable(credential: PexCredential): boolean {
-  if (credential.selectively_disclosable !== undefined) return credential.selectively_disclosable
-  return (
-    credential.credential_format === 'mso_mdoc' ||
-    credential.credential_format === 'vc+sd-jwt' ||
-    credential.credential_format === 'dc+sd-jwt'
-  )
+  switch (credential.credential_format) {
+    case 'mso_mdoc':
+    case 'vc+sd-jwt':
+    case 'dc+sd-jwt':
+      return true
+    default:
+      return credential.selectively_disclosable === true
+  }
+}
+
+/**
+ * Whether a presentation of the credential can leave out some elements of an array, so that an array index in a path
+ * can name another element in the presentation than in the credential. An SD-JWT VC can, and so can a W3C credential
+ * that declares `selectively_disclosable`, such as one with a BBS proof. An mdoc can't, as it discloses a data element
+ * whole, and neither can a credential that is presented in full.
+ */
+export function canWithholdArrayElements(credential: PexCredential): boolean {
+  return credential.credential_format !== 'mso_mdoc' && isSelectivelyDisclosable(credential)
 }
 
 /**
