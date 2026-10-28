@@ -145,15 +145,17 @@ distinct, and a credential matches the one it declares. A presentation designati
 `jwt_vp_json`, `ldp_vp`, `di_vp`) admits the credentials such a presentation carries: JWT
 credentials under either of their designations, Linked Data credentials, or Data Integrity
 credentials. Its `alg` or `proof_type` describes the presentation, which this library never sees.
-An SD-JWT VC or an mdoc is presented as itself, so only its own designation admits it.
+An SD-JWT VC or an mdoc is presented as itself, so only its own designation admits it. An mdoc
+only matches an input descriptor whose `format`, or the definition's, names `mso_mdoc`, as ISO
+18013-7 requires.
 
 A few more describe what the credential can do, or what you check yourself:
 
-| Field                     | Meaning                                                                                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `selectively_disclosable` | The credential can disclose selectively, which `limit_disclosure: required` needs. Defaults to `true` for SD-JWT VCs and mdocs and `false` for W3C credentials, so set it for a BBS or AnonCreds credential. |
-| `predicate_results`       | A presentation holding `true` for a predicate field rather than the value, as AnonCreds presents it. Verify the predicate proof yourself.                                                                    |
-| `evaluated_constraints`   | Constraints you check yourself for this credential, e.g. `['statuses']` when you verify a non-revocation proof. See _Not evaluated_.                                                                         |
+| Field                     | Meaning                                                                                                                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `selectively_disclosable` | W3C credentials only. The credential can disclose selectively, which `limit_disclosure: required` needs. Defaults to `false`, so set it for a BBS or AnonCreds credential. An SD-JWT VC or an mdoc always discloses selectively. |
+| `predicate_results`       | A presentation holding `true` for a predicate field rather than the value, as AnonCreds presents it. Verify the predicate proof yourself.                                                                                        |
+| `evaluated_constraints`   | Constraints you check yourself for this credential, e.g. `['statuses']` when you verify a non-revocation proof. See _Not evaluated_.                                                                                             |
 
 Values that are not JSON, such as an mdoc's byte strings and dates, are leaves: a path does not
 reach into them and no `type` admits them.
@@ -198,7 +200,7 @@ for (const mismatch of inputDescriptor.non_matching_credentials) {
   for (const reason of mismatch.reasons) {
     console.log(reason.type, reason.message)
     // field   Value at '$.age' did not satisfy the filter: Expected 16 to be at least 18
-    // format  Credential format 'jwt_vc' is not allowed; expected one of 'mso_mdoc'
+    // format  Credential format 'jwt_vc' is not allowed; expected one of 'dc+sd-jwt'
   }
 }
 ```
@@ -247,9 +249,7 @@ const { output, paths, namespaces } = match.disclosure
   only check the predicate against the value. Only a zero-knowledge format keeps the value back, so
   with an SD-JWT show the holder the value rather than the `true` in `output`.
 - `namespaces`: mdoc only, `{ [namespace]: { [element]: intent_to_retain } }`, the shape an mdoc
-  device request needs. An mdoc discloses whole data elements: a path that points inside an
-  element's value requests the element, and a path naming a namespace requests every element in
-  it. `output` holds the elements as they are disclosed, and `paths` lists them.
+  device request needs. `output` holds the elements as they are disclosed, and `paths` lists them.
 
 An SD-JWT presentation frame can't be built from `paths` alone. `@sd-jwt/present` counts the decoy
 digests in an array, which the decoded claims leave out, so build the frame from the encoded SD-JWT,
@@ -320,10 +320,14 @@ A presentation differs from a credential in a few ways, which this accounts for:
   mdoc device response the document whose doctype is the input descriptor's id (ISO 18013-7).
 - With more than one presentation, `$` is the array of them, so every path has to select one with
   `$[n]`. A path like `$[1].verifiableCredential[0]` selects credential 0 of presentation 1.
-- An array index in a field path matches any element: the elements the holder withheld are gone,
-  so the second element of the credential can be the first of the presentation. When every element
-  fails the filter, the path counts as not resolved, as the element it names may have been withheld,
-  so an optional field passes.
+- In a credential that can withhold array elements, an array index in a field path matches any
+  element: the elements the holder withheld are gone, so the second element of the credential can be
+  the first of the presentation. When every element fails the filter, the path counts as not
+  resolved, as the element it names may have been withheld, so an optional field passes. An SD-JWT VC
+  can withhold array elements, and so can a W3C credential that declares `selectively_disclosable`.
+  An mdoc discloses a data element whole, and a JWT VC or a Linked Data credential without
+  `selectively_disclosable` is presented in full, so their indexes are matched as they are
+  (`canWithholdArrayElements`).
 - A `format` restriction on algorithms, proof types or cryptosuites fails when the credential
   declares none, instead of being skipped.
 - A `pick` requirement needs exactly `count` of its members, or between `min` and `max`. For a query
@@ -363,7 +367,10 @@ in a credential's field paths.
 | `[*]`, `.*`            | every array element, e.g. `$.vc.type.*`, `$.accounts[*].id`                                                                |
 
 A path starts at the claims (the namespaces of an mdoc), and is at least one segment long, as a DCQL
-claims path is: a field with path `$` would disclose the whole credential, and is rejected. A wildcard
+claims path is: a field with path `$` would disclose the whole credential, and is rejected. In an
+input descriptor whose `format` names `mso_mdoc`, every path names one data element,
+`$['org.iso.18013.5.1']['family_name']`, as ISO 18013-7 requires and an mdoc discloses whole data
+elements. Any other path is rejected. A wildcard
 selects array elements only, as `null` does in a DCQL claims path. To ask for an object with
 everything in it, name the object: `$.address`, not `$.address.*`.
 

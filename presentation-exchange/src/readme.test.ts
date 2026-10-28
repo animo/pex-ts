@@ -96,6 +96,7 @@ describe('README: credentials', () => {
         input_descriptors: [
           {
             id: 'org.iso.18013.5.1.mDL',
+            format: { mso_mdoc: { alg: ['ES256'] } },
             constraints: { fields: [{ path: ["$['org.iso.18013.5.1']['family_name']"] }] },
           },
         ],
@@ -134,7 +135,7 @@ describe('README: reading the result', () => {
     const result = queryPresentationDefinition(
       {
         id: 'd',
-        format: { mso_mdoc: { alg: ['ES256'] } },
+        format: { 'dc+sd-jwt': {} },
         input_descriptors: [
           { id: 'x', constraints: { fields: [{ path: ['$.age'], filter: { type: 'number', minimum: 18 } }] } },
         ],
@@ -145,7 +146,7 @@ describe('README: reading the result', () => {
     const reasons = result.input_descriptors[0]?.non_matching_credentials[0]?.reasons ?? []
     const byType = Object.fromEntries(reasons.map((reason) => [reason.type, reason.message]))
 
-    expect(byType.format).toBe("Credential format 'jwt_vc' is not allowed; expected one of 'mso_mdoc'")
+    expect(byType.format).toBe("Credential format 'jwt_vc' is not allowed; expected one of 'dc+sd-jwt'")
     expect(byType.field).toContain('Expected 16 to be at least 18')
   })
 
@@ -225,14 +226,10 @@ describe('README: limit disclosure', () => {
         input_descriptors: [
           {
             id: 'org.iso.18013.5.1.mDL',
+            format: { mso_mdoc: { alg: ['ES256'] } },
             constraints: {
               limit_disclosure: 'required',
-              fields: [
-                {
-                  path: ["$['org.iso.18013.5.1']['driving_privileges'][0]['vehicle_category_code']"],
-                  intent_to_retain: false,
-                },
-              ],
+              fields: [{ path: ["$['org.iso.18013.5.1']['driving_privileges']"], intent_to_retain: false }],
             },
           },
         ],
@@ -251,6 +248,7 @@ describe('README: limit disclosure', () => {
     const disclosure = result.input_descriptors[0]?.matching_credentials[0]?.disclosure
     expect(disclosure?.namespaces).toEqual({ 'org.iso.18013.5.1': { driving_privileges: false } })
     expect(disclosure?.output).toEqual({ 'org.iso.18013.5.1': { driving_privileges: privileges } })
+    expect(disclosure?.paths).toEqual([['org.iso.18013.5.1', 'driving_privileges']])
   })
 })
 

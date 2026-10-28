@@ -1,3 +1,4 @@
+import { parseJsonPath } from '../json-path/parse-json-path.js'
 import { PexInvalidDefinitionError } from '../pex-error/e-pex.js'
 import { getAllowedCredentialFormats } from './m-format.js'
 import type { InputDescriptor } from './m-input-descriptor.js'
@@ -21,6 +22,26 @@ function collectGroups(inputDescriptors: InputDescriptor[]): Set<string> {
     for (const group of inputDescriptor.group ?? []) groups.add(group)
   }
   return groups
+}
+
+/**
+ * ISO 18013-7 requires each path of an mdoc input descriptor to name one data element,
+ * `$['<namespace>']['<data element identifier>']`, as an mdoc discloses whole data elements.
+ */
+function validateMdocPaths(inputDescriptor: InputDescriptor, path: string, issues: DefinitionIssue[]) {
+  const fields = 'constraints' in inputDescriptor ? (inputDescriptor.constraints?.fields ?? []) : []
+
+  for (const [fieldIndex, field] of fields.entries()) {
+    for (const [pathIndex, fieldPath] of field.path.entries()) {
+      const segments = parseJsonPath(fieldPath)
+      if (segments.length === 2 && segments.every((segment) => typeof segment === 'string')) continue
+
+      issues.push({
+        path: `${path}.constraints.fields[${fieldIndex}].path[${pathIndex}]`,
+        message: `An mdoc path names one data element, $['<namespace>']['<data element identifier>'] (ISO 18013-7), not '${fieldPath}'`,
+      })
+    }
+  }
 }
 
 function validateSubmissionRequirement(
@@ -92,6 +113,11 @@ export function getPresentationDefinitionIssues(definition: PresentationDefiniti
             `which the definition-level format does not ('${allowed.join("', '")}')`,
         })
       }
+    }
+
+    const effectiveFormat = descriptorFormat ?? definition.format
+    if (effectiveFormat !== undefined && getAllowedCredentialFormats(effectiveFormat)?.includes('mso_mdoc')) {
+      validateMdocPaths(inputDescriptor, `$.input_descriptors[${index}]`, issues)
     }
   }
 

@@ -1,7 +1,7 @@
 import type { PexCredential } from '../pex-credential/u-pex-credential.js'
 import type { MismatchReason } from '../pex-query-result/m-pex-query-result.js'
 import type { Format } from '../presentation-definition/m-format.js'
-import { getAllowedCredentialFormats } from '../presentation-definition/m-format.js'
+import { credentialFormatDesignations, getAllowedCredentialFormats } from '../presentation-definition/m-format.js'
 import type { InputDescriptor } from '../presentation-definition/m-input-descriptor.js'
 import type { PresentationDefinition } from '../presentation-definition/m-presentation-definition.js'
 
@@ -43,13 +43,24 @@ export function runFormatQuery(
   format: Format | undefined,
   options: RunFormatQueryOptions = {}
 ): { success: true } | { success: false; reason: MismatchReason } {
-  if (format === undefined) return { success: true }
-
-  const allowed = getAllowedCredentialFormats(format)
-  // Nothing in this `format` addresses credentials, so it cannot reject one.
-  if (allowed === undefined) return { success: true }
-
   const designation = credential.credential_format
+  const allowed = format === undefined ? undefined : getAllowedCredentialFormats(format)
+
+  // ISO 18013-7 requires an mdoc input descriptor to name `mso_mdoc` in its format, which is also what limits its
+  // paths to data elements, see `getPresentationDefinitionIssues`
+  if (designation === 'mso_mdoc' && allowed === undefined) {
+    return {
+      success: false,
+      reason: {
+        type: 'format',
+        allowed: [...credentialFormatDesignations],
+        message: "An mdoc only matches an input descriptor whose format names 'mso_mdoc', which ISO 18013-7 requires",
+      },
+    }
+  }
+
+  // Nothing in this `format` addresses credentials, so it cannot reject one.
+  if (format === undefined || allowed === undefined) return { success: true }
 
   if (!allowed.includes(designation)) {
     return {

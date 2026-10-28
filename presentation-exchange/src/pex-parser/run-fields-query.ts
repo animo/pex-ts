@@ -30,8 +30,9 @@ export type FieldResult = { success: true; match: FieldMatch } | { success: fals
 
 export interface RunFieldQueryOptions {
   /**
-   * Evaluate presented claims rather than a credential: an array index matches any element, because
-   * the elements a holder withheld are absent from a selectively disclosed presentation.
+   * Evaluate presented claims of a credential that can withhold array elements, rather than a credential: an
+   * array index matches any element, because the elements a holder withheld are absent from a selectively
+   * disclosed presentation.
    */
   presentation?: boolean
   /** A field with a `predicate` also accepts `true`, see `PexCredential.predicate_results`. */
@@ -47,8 +48,8 @@ export interface RunFieldQueryOptions {
  * credential shapes, e.g. `["$.issuer", "$.vc.issuer", "$.iss"]`. When no path matches, the first
  * path whose values failed the filter is reported.
  *
- * In a presentation, a path with an array index resolves only when an element passes the filter: the
- * index matches any element there, and the one it names may have been withheld.
+ * In a presentation that can withhold array elements, a path with an array index resolves only when an element
+ * passes the filter: the index matches any element there, and the one it names may have been withheld.
  *
  * Where a path resolves to several nodes (through a wildcard), the field matches if **any** of
  * them satisfies the filter, and every node that satisfies it is reported — as dcql-ts does for a

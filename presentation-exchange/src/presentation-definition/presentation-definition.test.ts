@@ -213,6 +213,36 @@ describe('semantic validation', () => {
     expect(() => validatePresentationDefinition(definition)).toThrow(PexInvalidDefinitionError)
   })
 
+  it('reports an mdoc path that does not name one data element, per ISO 18013-7', () => {
+    const fields = [{ path: ["$['org.iso.18013.5.1']['family_name']", "$['org.iso.18013.5.1']", '$.a.b.c'] }]
+    const definition = parsePresentationDefinition({
+      id: 'x',
+      format: { mso_mdoc: { alg: ['ES256'] } },
+      input_descriptors: [
+        // Through the definition-level format
+        { id: 'a', constraints: { fields } },
+        // A format that names mso_mdoc next to another one
+        { id: 'b', format: { mso_mdoc: { alg: ['ES256'] }, 'dc+sd-jwt': {} }, constraints: { fields } },
+      ],
+    }).definition
+
+    expect(getPresentationDefinitionIssues(definition).map((issue) => issue.path)).toEqual([
+      '$.input_descriptors[0].constraints.fields[0].path[1]',
+      '$.input_descriptors[0].constraints.fields[0].path[2]',
+      // The descriptor-level format widens the definition-level one
+      '$.input_descriptors[1].format',
+      '$.input_descriptors[1].constraints.fields[0].path[1]',
+      '$.input_descriptors[1].constraints.fields[0].path[2]',
+    ])
+
+    // Without mso_mdoc in the format, the paths are not mdoc paths
+    const sdJwt = parsePresentationDefinition({
+      id: 'x',
+      input_descriptors: [{ id: 'a', format: { 'dc+sd-jwt': {} }, constraints: { fields } }],
+    }).definition
+    expect(getPresentationDefinitionIssues(sdJwt)).toEqual([])
+  })
+
   it('reports a submission requirement referencing an undeclared group', () => {
     const definition = parsePresentationDefinition({
       id: 'x',

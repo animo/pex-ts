@@ -79,8 +79,7 @@ export interface LimitDisclosureResult {
    * A claim matched only by a `predicate` field is `true`: the verifier is to learn that the predicate
    * holds, not the value. Only a zero-knowledge format can keep the value back, though. With an SD-JWT,
    * `paths` discloses the value itself, and an mdoc discloses whole data elements, so a wallet shows the
-   * holder the value, not `true`. For an mdoc, `output` holds the data elements the paths point into, as
-   * those are what is disclosed.
+   * holder the value, not `true`.
    */
   output: JsonObject
   /**
@@ -98,8 +97,6 @@ export interface LimitDisclosureResult {
   paths: PathComponent[][]
   /**
    * mdoc only: `{ [namespace]: { [element]: intent_to_retain } }`, the shape an mdoc device request needs.
-   * A path that points inside an element's value requests the element, and one that names a namespace
-   * requests every element in it.
    */
   namespaces?: Record<string, Record<string, boolean>>
 }

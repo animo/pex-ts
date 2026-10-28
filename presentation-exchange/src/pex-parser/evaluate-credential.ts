@@ -1,4 +1,5 @@
 import {
+  canWithholdArrayElements,
   getCredentialClaims,
   isSelectivelyDisclosable,
   type PexCredential,
@@ -119,7 +120,8 @@ function checkLimitDisclosure(constraints: Constraints | undefined, credential: 
 export interface EvaluateCredentialOptions {
   /**
    * Evaluate a credential as a verifier received it:
-   * - an array index in a path matches any element, as the elements a holder withheld are absent
+   * - an array index in a path matches any element of a credential that can withhold array elements (see
+   *   `canWithholdArrayElements`), as the elements a holder withheld are absent
    * - an algorithm, proof type or cryptosuite restriction fails when the credential declares none,
    *   rather than being skipped as it is for a holder, who can't always know them in advance
    */
@@ -157,7 +159,8 @@ export function evaluateCredential(
   }
 
   const fields = runFieldsQuery(compiledFields, getCredentialClaims(credential), {
-    presentation: options.presentation,
+    // A credential presented in full keeps the positions of its array elements, so its indexes are matched as they are
+    presentation: options.presentation && canWithholdArrayElements(credential),
     predicateResults: credential.predicate_results === true,
   })
   reasons.push(...fields.reasons)
