@@ -41,6 +41,12 @@ updates:
     ignore:
       # Auto update does not work well with biome.json schema version
       - dependency-name: "@biomejs/biome"
+      # parity/ diffs against the deprecated implementation, so its deps stay on the old release line.
+      # A 0.x minor is breaking, hence minor too for @sd-jwt.
+      - dependency-name: "@animo-id/pex"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sd-jwt/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     # Labels for PRs
     labels:
       - "dependencies"
