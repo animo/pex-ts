@@ -178,6 +178,36 @@ describe('resolveDescriptorLocation', () => {
     expect(result.success).toBe(false)
   })
 
+  it.each(['$.fakeCred', '$.fakeCred[0]', '$.vp.fakeCred[0]', '$.a.verifiableCredential[0]', '$[0].fakeCred[0]'])(
+    'rejects the path %s, as a presentation holds credentials only under verifiableCredential',
+    (path) => {
+      expect(resolveDescriptorLocation({ id: 'a', format: 'x', path }).success).toBe(false)
+    }
+  )
+
+  it('rejects a nested path that is not a presentation credential path', () => {
+    const result = resolveDescriptorLocation({
+      id: 'a',
+      format: 'x',
+      path: '$',
+      path_nested: { id: 'a', format: 'y', path: '$.fakeCred[0]' },
+    })
+    expect(result).toMatchObject({ success: false, message: expect.stringContaining('does not select') })
+  })
+
+  it('rejects path_nested pointing at another credential than path', () => {
+    const result = resolveDescriptorCredential(
+      {
+        id: 'a',
+        format: 'x',
+        path: '$[0].verifiableCredential[0]',
+        path_nested: { id: 'a', format: 'y', path: '$.verifiableCredential[1]' },
+      },
+      [{ credentials: [sdJwt, ldpVc] }, { credentials: [sdJwt] }]
+    )
+    expect(result).toMatchObject({ success: false, message: expect.stringContaining('contradictory') })
+  })
+
   it('rejects an unsupported JSONPath', () => {
     expect(resolveDescriptorLocation({ id: 'a', format: 'x', path: '$[?(@.a)]' }).success).toBe(false)
   })
