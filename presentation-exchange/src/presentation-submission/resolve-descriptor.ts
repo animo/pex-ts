@@ -35,16 +35,22 @@ function segmentsOf(path: string): JsonPathSegment[] | undefined {
 }
 
 /**
- * The trailing array index of a nested credential path, e.g. `$.vp.verifiableCredential[2]`.
+ * The index of the credential a path selects within a presentation: `verifiableCredential[n]` (Linked
+ * Data) or `vp.verifiableCredential[n]` (JWT), and nothing else.
  *
- * The leading key segments are not checked against a fixed list: which key a presentation nests
- * credentials under is an encoding detail (`verifiableCredential` for Linked Data,
- * `vp.verifiableCredential` for JWT), and a verifier gains nothing from rejecting a shape it can
- * read. What matters is that the path ends by selecting one credential.
+ * The keys are checked because the credential that gets verified must be the one the path names in the
+ * raw presentation. A path like `$.fakeCred[0]` names nothing a presentation holds, so a caller following
+ * it would read a different credential than the one resolved here.
  */
 function trailingIndex(segments: JsonPathSegment[]): number | undefined {
-  const last = segments.at(-1)
-  return typeof last === 'number' ? last : undefined
+  const index = segments.at(-1)
+  if (typeof index !== 'number') return undefined
+
+  const keys = segments.slice(0, -1)
+  const isPresentationPath =
+    (keys.length === 1 && keys[0] === 'verifiableCredential') ||
+    (keys.length === 2 && keys[0] === 'vp' && keys[1] === 'verifiableCredential')
+  return isPresentationPath ? index : undefined
 }
 
 export interface ResolveDescriptorLocationOptions {

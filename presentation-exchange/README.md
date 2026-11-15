@@ -314,6 +314,11 @@ if (resolved.success) {
 }
 ```
 
+`credentials` must hold only the credentials you verified. The credential of a descriptor comes from
+`resolveDescriptorCredential`, never from following the path in the raw presentation: only
+`verifiableCredential[n]` and `vp.verifiableCredential[n]` are accepted as credential paths, and
+anything else is rejected.
+
 A presentation differs from a credential in a few ways, which this accounts for:
 
 - A path like `$` that addresses a presentation as a whole selects its only credential, or for an
