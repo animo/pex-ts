@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "@animo-id/pex": "^6.1.1",
-    "@sd-jwt/core": "^0.9.2",
-    "@sd-jwt/decode": "^0.9.2",
+    "@sd-jwt/core": "^0.24.3",
+    "@sd-jwt/decode": "^0.19.0",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   }
