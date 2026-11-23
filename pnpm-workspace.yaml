@@ -4,7 +4,7 @@ packages:
 
 catalog:
   "@types/node": ^26.6.6
-  fast-check: ^4.10.2
+  fast-check: ^4.10.3
   tsdown: 0.23.7
   tsx: ^4.11.2
   typescript: ~7.0.2
