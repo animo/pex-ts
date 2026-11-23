@@ -1,6 +1,6 @@
 {
   "name": "presentation-exchange",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A lean TypeScript implementation of the DIF Presentation Exchange v1 and v2 specification",
   "license": "Apache-2.0",
   "repository": {
